@@ -237,7 +237,6 @@ dependencies = [
  "clap",
  "epub-builder",
  "quick-xml",
- "serde",
 ]
 
 [[package]]
