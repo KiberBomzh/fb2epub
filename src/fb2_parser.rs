@@ -7,22 +7,22 @@ use quick_xml::reader::Reader;
 
 
 #[derive(Clone, Debug)]
-struct Sequence {
-    name: String,
-    number: String
+pub struct Sequence {
+    pub name: String,
+    pub number: String
 }
 
 #[derive(Debug)]
-struct Metadata {
-    title: Option<String>,
-    authors: Option<Vec<String>>,
-    annotation: Option<Vec<String>>,
-    language: Option<String>,
-    sequence: Option<Sequence>
+pub struct Metadata {
+    pub title: Option<String>,
+    pub authors: Option<Vec<String>>,
+    pub annotation: Option<Vec<String>>,
+    pub language: Option<String>,
+    pub sequence: Option<Sequence>
 }
 
-// Должно возвращать Option, Some(BookData)
-pub fn get_data(book: &PathBuf) {
+
+pub fn get_data(book: &PathBuf) -> Metadata {
     let mut meta = Metadata {
         title: None,
         authors: None,
@@ -193,5 +193,5 @@ pub fn get_data(book: &PathBuf) {
         
         buf.clear();
     };
-    dbg!(&meta);
+    return meta
 }

@@ -1,4 +1,5 @@
 mod fb2_parser;
+mod epub_creator;
 
 use std::path::PathBuf;
 
@@ -14,5 +15,6 @@ pub fn start(book: &str) {
     };
     
     
-    fb2_parser::get_data(&path);
+    let meta = fb2_parser::get_data(&path);
+    epub_creator::create_epub(&meta).unwrap();
 }
