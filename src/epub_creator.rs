@@ -7,8 +7,9 @@ use epub_builder::Result;
 use crate::fb2_parser;
 
 
-pub fn create_epub(metadata: &fb2_parser::Metadata) -> Result<()> {
+pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
+    let metadata = &data.meta;
     
     // Добавление метаданных
     if let Some(title) = &metadata.title {

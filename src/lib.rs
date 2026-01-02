@@ -15,6 +15,6 @@ pub fn start(book: &str) {
     };
     
     
-    let meta = fb2_parser::get_data(&path);
-    epub_creator::create_epub(&meta).unwrap();
+    let data = fb2_parser::get_data(&path);
+    //epub_creator::create_epub(&data).unwrap();
 }
