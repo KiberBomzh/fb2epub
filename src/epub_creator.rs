@@ -12,21 +12,18 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     let metadata = &data.meta;
     
     // Добавление метаданных
-    if let Some(title) = &metadata.title {
-        builder.metadata("title", title)?;
+    builder
+        .metadata("lang", &metadata.language)?
+        .metadata("title", &metadata.title)?;
+    
+    for author in &metadata.authors {
+        builder.metadata("author", author)?;
     };
-    if let Some(authors) = &metadata.authors {
-        for author in authors {
-            builder.metadata("author", author)?;
-        }
-    };
+    
     if let Some(annotation) = &metadata.annotation {
         for p in annotation {
             builder.add_description(p);
         };
-    };
-    if let Some(lang) = &metadata.language {
-        builder.metadata("lang", lang)?;
     };
     if let Some(seq) = &metadata.sequence {
         if !seq.name.is_empty() {

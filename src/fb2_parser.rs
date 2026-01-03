@@ -4,6 +4,7 @@ mod content_reader;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::BufReader;
+use std::collections::HashMap;
 
 use quick_xml::reader::Reader;
 use crate::fb2_parser::metadata_reader::metadata_reader;
@@ -18,8 +19,15 @@ pub use crate::fb2_parser::content_reader::Section;
 pub struct BookData {
     pub meta: Metadata,
     pub content: Vec<Section>,
-    pub images: Option<()>
+    pub images: HashMap<String, Image>
 } // в images будут биннарные данные изображений
+
+#[derive(Clone, Debug)]
+pub struct Image {
+    id: String,
+    content_type: String,
+    binary: String
+}
 
 
 // Функция для вывода секций, удобно для дебага
@@ -47,15 +55,13 @@ pub fn get_data(book: &PathBuf) -> BookData {
     let mut buf = Vec::new();
     
     
-    let metadata = metadata_reader(&mut xml_reader, &mut buf);
-    let book_content = content_reader(&mut xml_reader, &mut buf);
-    // sections_reader(&book_content, false);
-    
-    let data = BookData {
-        meta: metadata,
-        content: book_content,
-        images: None
+    let mut data = BookData {
+        meta: metadata_reader(&mut xml_reader, &mut buf),
+        content: Vec::new(),
+        images: HashMap::new()
     };
+    content_reader(&mut data, &mut xml_reader, &mut buf);
+    // sections_reader(&data.content, false);
     
     return data
 }

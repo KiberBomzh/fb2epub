@@ -1,11 +1,14 @@
 use std::io::BufRead;
+use std::collections::HashMap;
 
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 
+use crate::fb2_parser::Image;
+
 
 #[derive(Debug, Clone)]
-pub struct Text {
+pub struct TextBlock {
     pub text: String,
     pub strong: bool,            // полужирный
     pub emphasis: bool,          // курсив
@@ -17,8 +20,9 @@ pub struct Text {
 
 #[derive(Debug, Clone)]
 pub enum Paragraph {
-    Text(Vec<Text>),
+    Text(Vec<TextBlock>),
     Subtitle(String),
+    Image(Option<String>),
     EmptyLine
 }
 
@@ -31,13 +35,14 @@ pub struct Section { // добавить cite, epigraph, annotation
 // чёт придумать из ссылками на заметки и с картинками
 
 
-pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<Section> where R: BufRead {
+pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
     let mut sections: Vec<Section> = Vec::new();
+    let mut images: HashMap<String, Image> = HashMap::new();
     
     let mut level: u8 = 0;
     let mut title: Vec<String> = Vec::new();
     let mut paragraphs: Vec<Paragraph> = Vec::new();
-    let mut paragraph: Vec<Text> = Vec::new();
+    let mut paragraph: Vec<TextBlock> = Vec::new();
     
     let mut in_title = false;
     let mut in_subtitle = false;
@@ -49,6 +54,13 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
     let mut code = false;
     let mut sup = false;
     let mut sub = false;
+    
+    let mut in_binary = false;
+    let mut current_image = Image {
+        id: String::new(),
+        content_type: String::new(),
+        binary: String::new()
+    };
     
     
     loop {
@@ -80,6 +92,24 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
+                    b"binary" => {
+                        in_binary = true;
+                        
+                        current_image.id = match e.try_get_attribute("id") {
+                            Ok(Some(attr)) => {
+                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
+                            },
+                            Ok(None) => "".to_string(),
+                            Err(_) => "".to_string()
+                        };
+                        current_image.content_type = match e.try_get_attribute("content-type") {
+                            Ok(Some(attr)) => {
+                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
+                            },
+                            Ok(None) => "".to_string(),
+                            Err(_) => "".to_string()
+                        };
+                    },
                     _ => {}
                 }
             }
@@ -117,6 +147,21 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
                     b"code" => code = false,
                     b"sup" => sup = false,
                     b"sub" => sub = false,
+                    
+                    b"binary" => {
+                        in_binary = false;
+                        
+                        if !current_image.id.is_empty() {
+                            images.insert(
+                                current_image.id.clone(),
+                                current_image.clone()
+                            );
+                        };
+                        
+                        current_image.id.clear();
+                        current_image.content_type.clear();
+                        current_image.binary.clear();
+                    },
                     _ => {}
                 }
             }
@@ -134,7 +179,7 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
                     } else if in_subtitle {
                         paragraphs.push(Paragraph::Subtitle(t_trimmed))
                     } else if in_p {
-                        paragraph.push(Text {
+                        paragraph.push(TextBlock {
                             text: t_trimmed,
                             strong,
                             emphasis,
@@ -143,6 +188,8 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
                             sup,
                             sub
                         })
+                    } else if in_binary {
+                        current_image.binary.push_str(&t_trimmed)
                     }
                 }
             }
@@ -150,6 +197,32 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
             Ok(Event::Empty(ref e)) => {
                 match e.name().as_ref() {
                     b"p" | b"empty-line" => paragraphs.push(Paragraph::EmptyLine),
+                    b"image" => {
+                        use std::borrow::Cow;
+                        
+                        let href: Option<String> = match e.try_get_attribute("l:href") {
+                            Ok(Some(attr)) => {
+                                match attr.unescape_value() {
+                                    Ok(Cow::Borrowed(v)) => Some(
+                                        if v.starts_with("#") {
+                                            v[1..].to_string()
+                                        } else {
+                                            v.to_string()
+                                        }
+                                        ),
+                                    Ok(Cow::Owned(v)) => Some(
+                                        if v.starts_with("#") {
+                                            v[1..].to_string()
+                                        } else {v.clone()}
+                                        ),
+                                    _ => None
+                                }
+                            },
+                            Ok(None) => None,
+                            Err(_) => None
+                        };
+                        paragraphs.push(Paragraph::Image(href));
+                    },
                     _ => {}
                 }
             }
@@ -166,5 +239,7 @@ pub fn content_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Vec<S
         
         buf.clear();
     };
-    return sections
+    
+    b_data.content = sections;
+    b_data.images = images;
 }

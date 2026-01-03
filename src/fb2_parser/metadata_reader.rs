@@ -12,20 +12,23 @@ pub struct Sequence {
 
 #[derive(Debug)]
 pub struct Metadata {
-    pub title: Option<String>,
-    pub authors: Option<Vec<String>>,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub language: String,
+    pub sequence: Option<Sequence>,
     pub annotation: Option<Vec<String>>,
-    pub language: Option<String>,
-    pub sequence: Option<Sequence>
-} // здесь должна быть ещё и обложка
+    pub cover: Option<String>
+}
+
 
 pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Metadata where R: BufRead {
     let mut meta = Metadata {
-        title: None,
-        authors: None,
+        title: String::new(),
+        authors: Vec::new(),
+        language: String::new(),
+        sequence: None,
         annotation: None,
-        language: None,
-        sequence: None
+        cover: None
     };
     
     let mut in_title_info = false;
@@ -45,6 +48,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
     let mut annotation: Vec<String> = Vec::new();
     
     let mut in_lang = false;
+    let mut in_cover = false;
     
     let mut sequence = Sequence {
         name: String::new(),
@@ -66,6 +70,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                     
                     b"annotation" if in_title_info => in_annotation = true,
                     b"lang" if in_title_info => in_lang = true,
+                    b"coverpage" if in_title_info => in_cover = true,
                     _ => {}
                 }
             }
@@ -97,10 +102,12 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         
                         
                         if !current_author.is_empty() {
-                            match meta.authors {
-                                Some(ref mut authors) => authors.push(current_author.trim().to_string()),
-                                None => meta.authors = Some(vec!(current_author.trim().to_string()))
-                            };
+                            meta.authors
+                                .push(
+                                    current_author
+                                        .trim()
+                                        .to_string()
+                                );
                             
                             current_author.clear();
                         }
@@ -117,6 +124,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         }
                     },
                     b"lang" => in_lang = false,
+                    b"coverpage" => in_cover = false,
                     b"description" => break,
                     _ => {}
                 }
@@ -129,7 +137,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                     .into_owned();
                 
                 if in_title {
-                    meta.title = Some(text);
+                    meta.title = text;
                 } else if in_first_name {
                     first_name = text;
                 } else if in_middle_name {
@@ -141,7 +149,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         annotation.push(text.trim().to_string());
                     }
                 } else if in_lang {
-                    meta.language = Some(text);
+                    meta.language = text;
                 }
             }
             
@@ -168,6 +176,31 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         };
                         sequence.name.clear();
                         sequence.number.clear();
+                    },
+                    b"image" if in_cover => {
+                        use std::borrow::Cow;
+                        
+                        meta.cover = match e.try_get_attribute("l:href") {
+                            Ok(Some(attr)) => {
+                                match attr.unescape_value() {
+                                    Ok(Cow::Borrowed(v)) => Some(
+                                        if v.starts_with("#") {
+                                            v[1..].to_string()
+                                        } else {
+                                            v.to_string()
+                                        }
+                                        ),
+                                    Ok(Cow::Owned(v)) => Some(
+                                        if v.starts_with("#") {
+                                            v[1..].to_string()
+                                        } else {v.clone()}
+                                        ),
+                                    _ => None
+                                }
+                            },
+                            Ok(None) => None,
+                            Err(_) => None
+                        };
                     },
                     _ => {}
                 }
