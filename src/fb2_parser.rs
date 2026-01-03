@@ -61,7 +61,7 @@ pub fn get_data(book: &PathBuf) -> BookData {
         images: HashMap::new()
     };
     content_reader(&mut data, &mut xml_reader, &mut buf);
-    // sections_reader(&data.content, false);
+    sections_reader(&data.content, false);
     
     return data
 }

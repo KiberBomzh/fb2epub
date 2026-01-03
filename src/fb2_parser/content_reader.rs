@@ -19,20 +19,43 @@ pub struct TextBlock {
 } // добавить сюда ещё и ссылки
 
 #[derive(Debug, Clone)]
+pub struct SubSection {
+    title: Vec<String>,
+    paragraphs: Vec<Paragraph>
+} // что придумать с тегом text-author
+
+#[derive(Debug, Clone)]
+pub struct Poem {
+    title: Vec<String>,
+    stanza: Vec<Stanza>,
+    paragraphs: Vec<Paragraph>
+}
+
+#[derive(Debug, Clone)]
+pub struct Stanza {
+    title: Vec<String>,
+    v: Vec<Paragraph>
+}
+
+#[derive(Debug, Clone)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
+    Epigraph(SubSection),
+    Cite(SubSection),
+    Annotation(SubSection),
+    Poem(Poem),
     Subtitle(String),
     Image(Option<String>),
     EmptyLine
 }
 
 #[derive(Debug)]
-pub struct Section { // добавить cite, epigraph, annotation
+pub struct Section {
     pub level: u8,
     pub title: Vec<String>,
     pub paragraphs: Vec<Paragraph>,
 }
-// чёт придумать из ссылками на заметки и с картинками
+// чёт придумать с примечаниями
 
 
 pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
@@ -43,6 +66,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut title: Vec<String> = Vec::new();
     let mut paragraphs: Vec<Paragraph> = Vec::new();
     let mut paragraph: Vec<TextBlock> = Vec::new();
+    let mut temp_titles: Vec<Vec<String>> = Vec::new();
+    let mut temp_paragraphs: Vec<Vec<Paragraph>> = Vec::new();
     
     let mut in_title = false;
     let mut in_subtitle = false;
@@ -61,6 +86,10 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         content_type: String::new(),
         binary: String::new()
     };
+
+    let mut in_poem = false;
+    let mut in_stanza = false;
+    let mut in_v = false;
     
     
     loop {
@@ -110,6 +139,18 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             Err(_) => "".to_string()
                         };
                     },
+
+                    b"epigraph" | b"annotation" | b"cite" => {
+                        // перемещение для разделения
+                        temp_titles.push(title.clone());
+                        temp_paragraphs.push(paragraphs.clone());
+
+                        title.clear();
+                        paragraphs.clear();
+                    },
+                    b"poem" => in_poem = true,
+                    b"stanza" if in_poem => in_stanza = true,
+                    b"v" if in_poem => in_v = true,
                     _ => {}
                 }
             }
@@ -162,6 +203,44 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         current_image.content_type.clear();
                         current_image.binary.clear();
                     },
+                    b"epigraph" => {
+                        let epigraph = SubSection {
+                            title,
+                            paragraphs
+                        };
+
+                        title = temp_titles.pop().unwrap();
+                        paragraphs = temp_paragraphs.pop().unwrap();
+
+                        paragraphs.push(Paragraph::Epigraph(epigraph));
+                    },
+                    b"annotation" => {
+                        let annotation = SubSection {
+                            title,
+                            paragraphs
+                        };
+
+                        title = temp_titles.pop().unwrap();
+                        paragraphs = temp_paragraphs.pop().unwrap();
+
+                        paragraphs.push(Paragraph::Annotation(annotation));
+                    },
+                    b"cite" => {
+                        let cite = SubSection {
+                            title,
+                            paragraphs
+                        };
+                        
+                        // перемещение значений обратно
+                        title = temp_titles.pop().unwrap();
+                        paragraphs = temp_paragraphs.pop().unwrap();
+
+                        paragraphs.push(Paragraph::Cite(cite));
+                    },
+
+                    b"poem" => in_poem = false,
+                    b"stanza" if in_poem => in_stanza = false,
+                    b"v" if in_poem => in_v = false,
                     _ => {}
                 }
             }
