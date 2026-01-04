@@ -209,7 +209,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
             Ok(Event::Eof) => break,
             
             Err(e) => {
-                eprintln!("FB2 parser error: {}", e);
+                eprintln!("FB2 parser error while reading metadata: {}", e);
                 break;
             }
             

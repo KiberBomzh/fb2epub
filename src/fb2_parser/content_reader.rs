@@ -98,9 +98,92 @@ fn get_attr(e: &BytesStart, query: &str) -> String {
     }
 }
 
+fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
+    let mut images: HashMap<String, Image> = HashMap::new();
+    
+    let mut in_binary = false;
+    let mut current_image = Image {
+        id: String::new(),
+        content_type: String::new(),
+        binary: String::new()
+    };
+    
+    let mut is_it_body = false;
+    
+    
+    loop {
+        match xml_reader.read_event_into(buf) {
+            Ok(Event::Start(ref e)) => {
+                match e.name().as_ref() {
+                    b"body" => {
+                        is_it_body = true;
+                        break
+                    },
+                    b"binary" => {
+                        in_binary = true;
+                        
+                        current_image.id = get_attr(e, "id");
+                        current_image.content_type = get_attr(e, "content-type");
+                    },
+                    _ => {}
+                }
+            }
+            
+            Ok(Event::End(ref e)) => {
+                match e.name().as_ref() {
+                    b"binary" => {
+                        in_binary = false;
+                        
+                        if !current_image.id.is_empty() {
+                            images.insert(
+                                current_image.id.clone(),
+                                current_image.clone()
+                            );
+                        };
+                        
+                        current_image.id.clear();
+                        current_image.content_type.clear();
+                        current_image.binary.clear();
+                    },
+                    _ => {}
+                }
+            }
+            
+            Ok(Event::Text(e)) => {
+                let text = e
+                    .decode()
+                    .unwrap()
+                    .into_owned();
+                
+                if !text.trim().is_empty() {
+                    if in_binary {
+                        current_image.binary.push_str(text.trim())
+                    }
+                }
+            }
+            
+            Ok(Event::Eof) => break,
+            
+            Err(e) => {
+                eprintln!("FB2 parser error while reading binary: {}", e);
+                break;
+            }
+            
+            _ => {}
+        }
+        
+        buf.clear();
+    };
+    
+    if is_it_body {
+        content_reader(b_data, xml_reader, buf);
+    } else {
+        b_data.images.extend(images);
+    }
+}
+
 pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
     let mut sections: Vec<Section> = Vec::new();
-    let mut images: HashMap<String, Image> = HashMap::new();
     
     let mut level: u8 = 0;
     let mut title: Vec<String> = Vec::new();
@@ -119,13 +202,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut code = false;
     let mut sup = false;
     let mut sub = false;
-    
-    let mut in_binary = false;
-    let mut current_image = Image {
-        id: String::new(),
-        content_type: String::new(),
-        binary: String::new()
-    };
 
     let mut in_poem = false;
     let mut in_stanza = false;
@@ -161,12 +237,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
-                    b"binary" => {
-                        in_binary = true;
-                        
-                        current_image.id = get_attr(e, "id");
-                        current_image.content_type = get_attr(e, "content-type");
-                    },
 
                     b"epigraph" | b"annotation" | b"cite" => {
                         // перемещение для разделения
@@ -185,6 +255,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             
             Ok(Event::End(ref e)) => {
                 match e.name().as_ref() {
+                    b"body" => break,
                     b"section" => {
                         if !paragraphs.is_empty() | !title.is_empty() {
                             sections.push(Section {
@@ -217,20 +288,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"sup" => sup = false,
                     b"sub" => sub = false,
                     
-                    b"binary" => {
-                        in_binary = false;
-                        
-                        if !current_image.id.is_empty() {
-                            images.insert(
-                                current_image.id.clone(),
-                                current_image.clone()
-                            );
-                        };
-                        
-                        current_image.id.clear();
-                        current_image.content_type.clear();
-                        current_image.binary.clear();
-                    },
                     b"epigraph" | b"annotation" | b"cite" => {
                         let sub_section = SubSection {
                             title,
@@ -279,8 +336,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             sup,
                             sub
                         })
-                    } else if in_binary {
-                        current_image.binary.push_str(&t_trimmed)
                     }
                 }
             }
@@ -299,7 +354,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             Ok(Event::Eof) => break,
             
             Err(e) => {
-                eprintln!("FB2 parser error: {}", e);
+                eprintln!("FB2 parser error while reading content: {}", e);
                 break;
             }
             
@@ -308,7 +363,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         
         buf.clear();
     };
-    
-    b_data.content = sections;
-    b_data.images = images;
+    b_data.content.extend(sections);
+    binary_reader(b_data, xml_reader, buf);
 }
