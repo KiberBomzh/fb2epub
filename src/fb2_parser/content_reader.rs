@@ -1,8 +1,10 @@
 use std::io::BufRead;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+use quick_xml::events::BytesStart;
 
 use crate::fb2_parser::Image;
 
@@ -57,6 +59,44 @@ pub struct Section {
 }
 // чёт придумать с примечаниями
 
+
+fn get_href(e: &BytesStart) -> Option<String> {
+    match e.try_get_attribute("l:href") {
+        Ok(Some(attr)) => {
+            match attr.unescape_value() {
+                Ok(Cow::Borrowed(v)) => Some(
+                    if v.starts_with("#") {
+                        v[1..].to_string()
+                    } else {
+                        v.to_string()
+                    }
+                    ),
+                Ok(Cow::Owned(v)) => Some(
+                    if v.starts_with("#") {
+                        v[1..].to_string()
+                    } else {v.clone()}
+                    ),
+                _ => None
+            }
+        },
+        Ok(None) => None,
+        Err(_) => None
+    }
+}
+
+fn get_attr(e: &BytesStart, query: &str) -> String {
+    match e.try_get_attribute(query) {
+        Ok(Some(attr)) => {
+            attr
+                .unescape_value()
+                .unwrap_or(
+                    "".to_string().into()
+                ).to_string()
+        },
+        Ok(None) => "".to_string(),
+        Err(_) => "".to_string()
+    }
+}
 
 pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
     let mut sections: Vec<Section> = Vec::new();
@@ -124,20 +164,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"binary" => {
                         in_binary = true;
                         
-                        current_image.id = match e.try_get_attribute("id") {
-                            Ok(Some(attr)) => {
-                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
-                            },
-                            Ok(None) => "".to_string(),
-                            Err(_) => "".to_string()
-                        };
-                        current_image.content_type = match e.try_get_attribute("content-type") {
-                            Ok(Some(attr)) => {
-                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
-                            },
-                            Ok(None) => "".to_string(),
-                            Err(_) => "".to_string()
-                        };
+                        current_image.id = get_attr(e, "id");
+                        current_image.content_type = get_attr(e, "content-type");
                     },
 
                     b"epigraph" | b"annotation" | b"cite" => {
@@ -203,8 +231,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         current_image.content_type.clear();
                         current_image.binary.clear();
                     },
-                    b"epigraph" => {
-                        let epigraph = SubSection {
+                    b"epigraph" | b"annotation" | b"cite" => {
+                        let sub_section = SubSection {
                             title,
                             paragraphs
                         };
@@ -212,30 +240,14 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         title = temp_titles.pop().unwrap();
                         paragraphs = temp_paragraphs.pop().unwrap();
 
-                        paragraphs.push(Paragraph::Epigraph(epigraph));
-                    },
-                    b"annotation" => {
-                        let annotation = SubSection {
-                            title,
-                            paragraphs
-                        };
-
-                        title = temp_titles.pop().unwrap();
-                        paragraphs = temp_paragraphs.pop().unwrap();
-
-                        paragraphs.push(Paragraph::Annotation(annotation));
-                    },
-                    b"cite" => {
-                        let cite = SubSection {
-                            title,
-                            paragraphs
-                        };
-                        
-                        // перемещение значений обратно
-                        title = temp_titles.pop().unwrap();
-                        paragraphs = temp_paragraphs.pop().unwrap();
-
-                        paragraphs.push(Paragraph::Cite(cite));
+                        paragraphs.push(
+                            match e.name().as_ref() {
+                                b"epighraph" => Paragraph::Epigraph(sub_section),
+                                b"annotation" => Paragraph::Annotation(sub_section),
+                                b"cite" => Paragraph::Cite(sub_section),
+                                _ => Paragraph::EmptyLine
+                            }
+                        );
                     },
 
                     b"poem" => in_poem = false,
@@ -277,29 +289,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                 match e.name().as_ref() {
                     b"p" | b"empty-line" => paragraphs.push(Paragraph::EmptyLine),
                     b"image" => {
-                        use std::borrow::Cow;
-                        
-                        let href: Option<String> = match e.try_get_attribute("l:href") {
-                            Ok(Some(attr)) => {
-                                match attr.unescape_value() {
-                                    Ok(Cow::Borrowed(v)) => Some(
-                                        if v.starts_with("#") {
-                                            v[1..].to_string()
-                                        } else {
-                                            v.to_string()
-                                        }
-                                        ),
-                                    Ok(Cow::Owned(v)) => Some(
-                                        if v.starts_with("#") {
-                                            v[1..].to_string()
-                                        } else {v.clone()}
-                                        ),
-                                    _ => None
-                                }
-                            },
-                            Ok(None) => None,
-                            Err(_) => None
-                        };
+                        let href: Option<String> = get_href(e);
                         paragraphs.push(Paragraph::Image(href));
                     },
                     _ => {}
