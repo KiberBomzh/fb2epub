@@ -1,12 +1,10 @@
 use std::io::BufRead;
-use std::borrow::Cow;
-use std::collections::HashMap;
 
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
-use quick_xml::events::BytesStart;
 
-use crate::fb2_parser::Image;
+use crate::fb2_parser::{get_href, get_attr};
+use crate::fb2_parser::binary_reader::binary_reader;
 
 
 #[derive(Debug, Clone)]
@@ -18,7 +16,9 @@ pub struct TextBlock {
     pub code: bool,              // код
     pub sup: bool,               // верхний индекс
     pub sub: bool,               // нижний индекс
-} // добавить сюда ещё и ссылки
+    
+    pub link: Option<String>     // ссылка
+}
 
 #[derive(Debug, Clone)]
 pub struct SubSection {
@@ -63,127 +63,6 @@ pub struct Section {
 // чёт придумать с примечаниями
 
 
-fn get_href(e: &BytesStart) -> Option<String> {
-    match e.try_get_attribute("l:href") {
-        Ok(Some(attr)) => {
-            match attr.unescape_value() {
-                Ok(Cow::Borrowed(v)) => Some(
-                    if v.starts_with("#") {
-                        v[1..].to_string()
-                    } else {
-                        v.to_string()
-                    }
-                    ),
-                Ok(Cow::Owned(v)) => Some(
-                    if v.starts_with("#") {
-                        v[1..].to_string()
-                    } else {v.clone()}
-                    ),
-                _ => None
-            }
-        },
-        Ok(None) => None,
-        Err(_) => None
-    }
-}
-
-fn get_attr(e: &BytesStart, query: &str) -> String {
-    match e.try_get_attribute(query) {
-        Ok(Some(attr)) => {
-            attr
-                .unescape_value()
-                .unwrap_or(
-                    "".to_string().into()
-                ).to_string()
-        },
-        Ok(None) => "".to_string(),
-        Err(_) => "".to_string()
-    }
-}
-
-fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
-    let mut images: HashMap<String, Image> = HashMap::new();
-    
-    let mut in_binary = false;
-    let mut current_image = Image {
-        id: String::new(),
-        content_type: String::new(),
-        binary: String::new()
-    };
-    
-    let mut is_it_body = false;
-    
-    
-    loop {
-        match xml_reader.read_event_into(buf) {
-            Ok(Event::Start(ref e)) => {
-                match e.name().as_ref() {
-                    b"body" => {
-                        is_it_body = true;
-                        break
-                    },
-                    b"binary" => {
-                        in_binary = true;
-                        
-                        current_image.id = get_attr(e, "id");
-                        current_image.content_type = get_attr(e, "content-type");
-                    },
-                    _ => {}
-                }
-            }
-            
-            Ok(Event::End(ref e)) => {
-                match e.name().as_ref() {
-                    b"binary" => {
-                        in_binary = false;
-                        
-                        if !current_image.id.is_empty() {
-                            images.insert(
-                                current_image.id.clone(),
-                                current_image.clone()
-                            );
-                        };
-                        
-                        current_image.id.clear();
-                        current_image.content_type.clear();
-                        current_image.binary.clear();
-                    },
-                    _ => {}
-                }
-            }
-            
-            Ok(Event::Text(e)) => {
-                let text = e
-                    .decode()
-                    .unwrap()
-                    .into_owned();
-                
-                if !text.trim().is_empty() {
-                    if in_binary {
-                        current_image.binary.push_str(text.trim())
-                    }
-                }
-            }
-            
-            Ok(Event::Eof) => break,
-            
-            Err(e) => {
-                eprintln!("FB2 parser error while reading binary: {}", e);
-                break;
-            }
-            
-            _ => {}
-        }
-        
-        buf.clear();
-    };
-    
-    if is_it_body {
-        content_reader(b_data, xml_reader, buf);
-    } else {
-        b_data.images.extend(images);
-    }
-}
 
 pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
     let mut sections: Vec<Section> = Vec::new();
@@ -205,6 +84,9 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut code = false;
     let mut sup = false;
     let mut sub = false;
+    
+    let mut in_a = false;
+    let mut link: Option<String> = None;
 
 
     let mut stanzas: Vec<Stanza> = Vec::new();
@@ -247,6 +129,10 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
+                    b"a" => {
+                        in_a = true;
+                        link = get_href(e);
+                    },
 
                     b"text-author" => in_text_author = true,
 
@@ -317,6 +203,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = false,
                     b"sup" => sup = false,
                     b"sub" => sub = false,
+                    b"a" => in_a = false,
 
                     b"text-author" => in_text_author = false,
                     
@@ -402,8 +289,10 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             strikethrough,
                             code,
                             sup,
-                            sub
-                        })
+                            sub,
+                            link: link.clone()
+                        });
+                        link = None;
                     }
                 }
             }

@@ -3,6 +3,8 @@ use std::io::BufRead;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 
+use crate::fb2_parser::get_href;
+
 
 #[derive(Clone, Debug)]
 pub struct Sequence {
@@ -180,27 +182,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                     b"image" if in_cover => {
                         use std::borrow::Cow;
                         
-                        meta.cover = match e.try_get_attribute("l:href") {
-                            Ok(Some(attr)) => {
-                                match attr.unescape_value() {
-                                    Ok(Cow::Borrowed(v)) => Some(
-                                        if v.starts_with("#") {
-                                            v[1..].to_string()
-                                        } else {
-                                            v.to_string()
-                                        }
-                                        ),
-                                    Ok(Cow::Owned(v)) => Some(
-                                        if v.starts_with("#") {
-                                            v[1..].to_string()
-                                        } else {v.clone()}
-                                        ),
-                                    _ => None
-                                }
-                            },
-                            Ok(None) => None,
-                            Err(_) => None
-                        };
+                        meta.cover = get_href(e);
                     },
                     _ => {}
                 }
