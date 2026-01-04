@@ -11,7 +11,7 @@ use crate::fb2_parser::Image;
 
 #[derive(Debug, Clone)]
 pub struct TextBlock {
-    pub text: String,
+    pub text: String,            // сам текст
     pub strong: bool,            // полужирный
     pub emphasis: bool,          // курсив
     pub strikethrough: bool,     // зачёркнутый
@@ -24,13 +24,14 @@ pub struct TextBlock {
 pub struct SubSection {
     title: Vec<String>,
     paragraphs: Vec<Paragraph>
-} // что придумать с тегом text-author
+}
 
 #[derive(Debug, Clone)]
 pub struct Poem {
     title: Vec<String>,
     stanza: Vec<Stanza>,
-    paragraphs: Vec<Paragraph>
+    paragraphs: Vec<Paragraph>,
+    date: String
 }
 
 #[derive(Debug, Clone)]
@@ -42,10 +43,12 @@ pub struct Stanza {
 #[derive(Debug, Clone)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
+    PlainText(String),
     Epigraph(SubSection),
     Cite(SubSection),
     Annotation(SubSection),
     Poem(Poem),
+    TextAuthor(String),
     Subtitle(String),
     Image(Option<String>),
     EmptyLine
@@ -203,9 +206,16 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut sup = false;
     let mut sub = false;
 
+
+    let mut stanzas: Vec<Stanza> = Vec::new();
+    let mut date = String::new();
+
+    let mut in_text_author = false;
+
     let mut in_poem = false;
     let mut in_stanza = false;
     let mut in_v = false;
+    let mut in_date = false;
     
     
     loop {
@@ -238,6 +248,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"sup" => sup = true,
                     b"sub" => sub = true,
 
+                    b"text-author" => in_text_author = true,
+
                     b"epigraph" | b"annotation" | b"cite" => {
                         // перемещение для разделения
                         temp_titles.push(title.clone());
@@ -246,9 +258,27 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         title.clear();
                         paragraphs.clear();
                     },
-                    b"poem" => in_poem = true,
-                    b"stanza" if in_poem => in_stanza = true,
+
+                    b"poem" => {
+                        in_poem = true;
+
+                        temp_titles.push(title.clone());
+                        temp_paragraphs.push(paragraphs.clone());
+
+                        title.clear();
+                        paragraphs.clear();
+                    },
+                    b"stanza" if in_poem => {
+                        in_stanza = true;
+
+                        temp_titles.push(title.clone());
+                        temp_paragraphs.push(paragraphs.clone());
+
+                        title.clear();
+                        paragraphs.clear();
+                    },
                     b"v" if in_poem => in_v = true,
+                    b"date" if in_poem => in_date = true,
                     _ => {}
                 }
             }
@@ -287,6 +317,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = false,
                     b"sup" => sup = false,
                     b"sub" => sub = false,
+
+                    b"text-author" => in_text_author = false,
                     
                     b"epigraph" | b"annotation" | b"cite" => {
                         let sub_section = SubSection {
@@ -307,9 +339,39 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         );
                     },
 
-                    b"poem" => in_poem = false,
-                    b"stanza" if in_poem => in_stanza = false,
-                    b"v" if in_poem => in_v = false,
+                    b"poem" => {
+                        in_poem = false;
+
+                        let poem = Poem {
+                            title,
+                            stanza: stanzas.clone(),
+                            paragraphs,
+                            date: date.clone()
+                        };
+
+                        title = temp_titles.pop().unwrap();
+                        paragraphs = temp_paragraphs.pop().unwrap();
+
+                        paragraphs.push(Paragraph::Poem(poem));
+
+                        stanzas.clear();
+                        date.clear();
+                    },
+                    b"stanza" => {
+                        in_stanza = false;
+
+                        let stanza = Stanza {
+                            title,
+                            v: paragraphs
+                        };
+
+                        title = temp_titles.pop().unwrap();
+                        paragraphs = temp_paragraphs.pop().unwrap();
+
+                        stanzas.push(stanza);
+                    },
+                    b"v" => in_v = false,
+                    b"date" => in_date = false,
                     _ => {}
                 }
             }
@@ -326,6 +388,12 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         title.push(text)
                     } else if in_subtitle {
                         paragraphs.push(Paragraph::Subtitle(t_trimmed))
+                    } else if in_text_author {
+                        paragraphs.push(Paragraph::TextAuthor(t_trimmed))
+                    } else if in_date {
+                        date = t_trimmed
+                    } else if in_v {
+                        paragraphs.push(Paragraph::PlainText(t_trimmed))
                     } else if in_p {
                         paragraph.push(TextBlock {
                             text: t_trimmed,
