@@ -16,5 +16,5 @@ pub fn start(book: &str) {
     
     
     let data = fb2_parser::get_data(&path);
-    //epub_creator::create_epub(&data).unwrap();
+    epub_creator::create_epub(&data).expect("Error while creating Epub!");
 }

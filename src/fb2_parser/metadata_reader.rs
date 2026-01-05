@@ -179,11 +179,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         sequence.name.clear();
                         sequence.number.clear();
                     },
-                    b"image" if in_cover => {
-                        use std::borrow::Cow;
-                        
-                        meta.cover = get_href(e);
-                    },
+                    b"image" if in_cover => meta.cover = get_href(e),
                     _ => {}
                 }
             }

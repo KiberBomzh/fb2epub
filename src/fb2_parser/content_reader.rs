@@ -22,22 +22,22 @@ pub struct TextBlock {
 
 #[derive(Debug, Clone)]
 pub struct SubSection {
-    title: Vec<String>,
-    paragraphs: Vec<Paragraph>
+    pub title: Vec<String>,
+    pub paragraphs: Vec<Paragraph>
 }
 
 #[derive(Debug, Clone)]
 pub struct Poem {
-    title: Vec<String>,
-    stanzas: Vec<Stanza>,
-    paragraphs: Vec<Paragraph>,
-    date: String
+    pub title: Vec<String>,
+    pub stanzas: Vec<Stanza>,
+    pub paragraphs: Vec<Paragraph>,
+    pub date: String
 }
 
 #[derive(Debug, Clone)]
 pub struct Stanza {
-    title: Vec<String>,
-    v: Vec<Paragraph>
+    pub title: Vec<String>,
+    pub v: Vec<Paragraph>
 }
 
 #[derive(Debug, Clone)]
@@ -86,7 +86,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut sup = false;
     let mut sub = false;
     
-    let mut in_a = false;
     let mut link: Option<String> = None;
 
 
@@ -139,10 +138,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
-                    b"a" => {
-                        in_a = true;
-                        link = get_href(e);
-                    },
+                    b"a" => link = get_href(e),
 
                     b"text-author" => in_text_author = true,
 
@@ -173,7 +169,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         title.clear();
                         paragraphs.clear();
                     },
-                    b"v" if in_poem => in_v = true,
+                    b"v" if in_stanza => in_v = true,
                     b"date" if in_poem => in_date = true,
                     _ => {}
                 }
@@ -218,7 +214,6 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = false,
                     b"sup" => sup = false,
                     b"sub" => sub = false,
-                    b"a" => in_a = false,
 
                     b"text-author" => in_text_author = false,
                     

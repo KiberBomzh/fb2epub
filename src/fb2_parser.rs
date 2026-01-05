@@ -1,6 +1,6 @@
-mod metadata_reader;
-mod content_reader;
-mod binary_reader;
+pub mod metadata_reader;
+pub mod content_reader;
+pub mod binary_reader;
 
 
 use std::path::PathBuf;
@@ -30,9 +30,9 @@ pub struct BookData {
 
 #[derive(Clone, Debug)]
 pub struct Image {
-    id: String,
-    content_type: String,
-    binary: String
+    pub id: String,
+    pub content_type: String,
+    pub binary: String
 }
 
 
@@ -79,7 +79,7 @@ fn get_attr(e: &BytesStart, query: &str) -> String {
 
 
 // Функция для вывода секций, удобно для дебага
-fn sections_reader(sections: &Vec<Section>, without_p: bool) {
+fn print_sections(sections: &Vec<Section>, without_p: bool) {
     let mut s = String::new();
     for section in sections {
         std::process::Command::new("clear").status().unwrap();
@@ -109,7 +109,7 @@ pub fn get_data(book: &PathBuf) -> BookData {
         images: HashMap::new()
     };
     content_reader(&mut data, &mut xml_reader, &mut buf);
-    sections_reader(&data.content, false);
+    // print_sections(&data.content, false);
     
     return data
 }
