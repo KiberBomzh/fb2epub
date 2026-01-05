@@ -29,7 +29,7 @@ pub struct SubSection {
 #[derive(Debug, Clone)]
 pub struct Poem {
     title: Vec<String>,
-    stanza: Vec<Stanza>,
+    stanzas: Vec<Stanza>,
     paragraphs: Vec<Paragraph>,
     date: String
 }
@@ -57,10 +57,10 @@ pub enum Paragraph {
 #[derive(Debug)]
 pub struct Section {
     pub level: u8,
+    pub id: Option<String>,
     pub title: Vec<String>,
     pub paragraphs: Vec<Paragraph>,
 }
-// чёт придумать с примечаниями
 
 
 
@@ -68,6 +68,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut sections: Vec<Section> = Vec::new();
     
     let mut level: u8 = 0;
+    let mut section_id: Vec<String> = Vec::new();
     let mut title: Vec<String> = Vec::new();
     let mut paragraphs: Vec<Paragraph> = Vec::new();
     let mut paragraph: Vec<TextBlock> = Vec::new();
@@ -105,9 +106,18 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             Ok(Event::Start(ref e)) => {
                 match e.name().as_ref() {
                     b"section" => {
+                        section_id.push(get_attr(e, "id"));
+                        
                         if !paragraphs.is_empty() | !title.is_empty() {
                             sections.push(Section {
                                 level: level,
+                                id: if level > 0 {
+                                    match section_id.pop() {
+                                        Some(id) if id.is_empty() => None,
+                                        Some(id) => Some(id),
+                                        None => None
+                                    }
+                                } else {None},
                                 title: title.clone(),
                                 paragraphs: paragraphs.clone()
                             });
@@ -176,6 +186,11 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         if !paragraphs.is_empty() | !title.is_empty() {
                             sections.push(Section {
                                 level: level,
+                                id: match section_id.pop() {
+                                    Some(id) if id.is_empty() => None,
+                                    Some(id) => Some(id),
+                                    None => None
+                                },
                                 title: title.clone(),
                                 paragraphs: paragraphs.clone()
                             });
@@ -231,7 +246,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
 
                         let poem = Poem {
                             title,
-                            stanza: stanzas.clone(),
+                            stanzas: stanzas.clone(),
                             paragraphs,
                             date: date.clone()
                         };
