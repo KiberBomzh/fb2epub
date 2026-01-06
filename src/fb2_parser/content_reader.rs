@@ -7,7 +7,7 @@ use crate::fb2_parser::{get_href, get_attr};
 use crate::fb2_parser::binary_reader::binary_reader;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TextBlock {
     pub text: String,            // сам текст
     pub strong: bool,            // полужирный
@@ -43,11 +43,11 @@ pub struct Stanza {
 #[derive(Debug, Clone)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
-    PlainText(String),
     Epigraph(SubSection),
     Cite(SubSection),
     Annotation(SubSection),
     Poem(Poem),
+    V(String),
     TextAuthor(String),
     Subtitle(String),
     Image(Option<String>),
@@ -290,7 +290,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     } else if in_date {
                         date = t_trimmed
                     } else if in_v {
-                        paragraphs.push(Paragraph::PlainText(t_trimmed))
+                        paragraphs.push(Paragraph::V(t_trimmed))
                     } else if in_p {
                         paragraph.push(TextBlock {
                             text: t_trimmed,

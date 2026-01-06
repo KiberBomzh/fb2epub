@@ -3,6 +3,7 @@ mod html_builder;
 use std::fs::File;
 
 use epub_builder::EpubBuilder;
+use epub_builder::EpubContent;
 use epub_builder::ZipLibrary;
 use epub_builder::Result;
 
@@ -56,16 +57,21 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
             let cover_name =  match &img.content_type[..] {
                 "image/png" => format!("images/cover.png"),
                 "image/jpeg" => format!("images/cover.jpg"),
+                "image/jpg" => format!("images/cover.jpg"),
                 _ => "".to_string()
             };
+            
             if !cover_name.is_empty() {
-                if let Ok(b) = general_purpose::STANDARD.decode(&img.binary) {
-                    builder.add_resource(
-                        cover_name,
-                        &b[..],
-                        img.content_type.clone()
-                    )?;
-                };
+                match general_purpose::STANDARD.decode(&img.binary) {
+                    Ok(b) => {
+                        builder.add_resource(
+                            cover_name,
+                            &b[..],
+                            img.content_type.clone()
+                        )?;
+                    },
+                    Err(err) => eprintln!("Image decoder error: {}", err)
+                }
             }
         }
     };
@@ -73,11 +79,19 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     builder.metadata("generator", "fb2epub")?;}
     
     
+    // level = 0 - это coverpage
+    
     // Добавление текстовых документоа
-    // for section in &data.content {
-    //     let html_content = html_builder(&section);
+    let mut counter = 1;
+    for section in &data.content {
+        let html_content = html_builder(&section);
+        let file_name = format!("text/Section_{counter}.xhtml");
+        builder.add_content(
+            EpubContent::new(&file_name, html_content.as_bytes())
+        )?;
         
-    // };
+        counter += 1;
+    };
     
     
     // Добавление картинок
@@ -91,12 +105,16 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         match &image.content_type[..] {
             "image/png" => img_name = format!("images/{}.png", counter),
             "image/jpeg" => img_name = format!("images/{}.jpg", counter),
+            "image/jpg" => img_name = format!("images/{}.jpg", counter),
             _ => continue
         };
         
         let binary = match general_purpose::STANDARD.decode(&image.binary) {
             Ok(b) => b,
-            Err(_) => continue
+            Err(err) => {
+                eprintln!("Image decoder error: {}", err);
+                continue
+            }
         };
         
         builder

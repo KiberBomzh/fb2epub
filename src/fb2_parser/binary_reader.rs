@@ -66,9 +66,15 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
                     .unwrap()
                     .into_owned();
                 
-                if !text.trim().is_empty() {
+                
+                let mut text_trimmed = text.trim().to_string();
+                if !text_trimmed.is_empty() {
                     if in_binary {
-                        current_image.binary.push_str(text.trim())
+                        text_trimmed = text_trimmed.replace("\r\n", "");
+                        text_trimmed = text_trimmed.replace("\n", "");
+                        text_trimmed = text_trimmed.replace(" ", "");
+                        
+                        current_image.binary.push_str(&text_trimmed);
                     }
                 }
             }
