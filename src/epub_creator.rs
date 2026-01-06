@@ -15,6 +15,7 @@ use crate::epub_creator::html_builder::html_builder;
 
 pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
+    let cover_key = &data.meta.cover;
     
     // Добавление метаданных
     {let metadata = &data.meta;
@@ -50,6 +51,25 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         };
     };
     
+    if let Some(k) = cover_key {
+        if let Some(img) = &data.images.get(k) {
+            let cover_name =  match &img.content_type[..] {
+                "image/png" => format!("images/cover.png"),
+                "image/jpeg" => format!("images/cover.jpg"),
+                _ => "".to_string()
+            };
+            if !cover_name.is_empty() {
+                if let Ok(b) = general_purpose::STANDARD.decode(&img.binary) {
+                    builder.add_resource(
+                        cover_name,
+                        &b[..],
+                        img.content_type.clone()
+                    )?;
+                };
+            }
+        }
+    };
+    
     builder.metadata("generator", "fb2epub")?;}
     
     
@@ -62,14 +82,22 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     
     // Добавление картинок
     {let mut counter = 1;
-    for (_, image) in &data.images {
+    for (key, image) in &data.images {
+        if let Some(k) = cover_key {
+             if k == key { continue }
+        };
+        
         let img_name: String;
         match &image.content_type[..] {
-            "image/png" => img_name = format!("image_{}.png", counter),
-            "image/jpeg" => img_name = format!("image_{}.jpg", counter),
+            "image/png" => img_name = format!("images/{}.png", counter),
+            "image/jpeg" => img_name = format!("images/{}.jpg", counter),
             _ => continue
-        }
-        let binary = general_purpose::STANDARD.decode(&image.binary).unwrap();
+        };
+        
+        let binary = match general_purpose::STANDARD.decode(&image.binary) {
+            Ok(b) => b,
+            Err(_) => continue
+        };
         
         builder
             .add_resource(
