@@ -243,7 +243,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
 
                         paragraphs.push(
                             match e.name().as_ref() {
-                                b"epighraph" => Paragraph::Epigraph(sub_section),
+                                b"epigraph" => Paragraph::Epigraph(sub_section),
                                 b"annotation" => Paragraph::Annotation(sub_section),
                                 b"cite" => Paragraph::Cite(sub_section),
                                 _ => Paragraph::EmptyLine
