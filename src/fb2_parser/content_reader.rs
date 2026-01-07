@@ -17,13 +17,13 @@ pub struct TextBlock {
     pub sup: bool,               // верхний индекс
     pub sub: bool,               // нижний индекс
     
-    pub link: Option<String>     // ссылка
+    pub link: Option<Link>     // ссылка
 }
 
-#[derive(Debug, Clone)]
-pub struct SubSection {
-    pub title: Vec<String>,
-    pub paragraphs: Vec<Paragraph>
+#[derive(Debug, Clone, PartialEq)]
+pub struct Link {
+    pub link: String,
+    pub link_type: Option<String>
 }
 
 #[derive(Debug, Clone)]
@@ -43,9 +43,10 @@ pub struct Stanza {
 #[derive(Debug, Clone)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
-    Epigraph(SubSection),
-    Cite(SubSection),
-    Annotation(SubSection),
+    Note(Section),
+    Epigraph(Section),
+    Cite(Section),
+    Annotation(Section),
     Poem(Poem),
     V(String),
     TextAuthor(String),
@@ -54,17 +55,16 @@ pub enum Paragraph {
     EmptyLine
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Section {
     pub level: u8,
     pub id: Option<String>,
     pub title: Vec<String>,
-    pub paragraphs: Vec<Paragraph>,
+    pub paragraphs: Vec<Paragraph>
 }
 
 
-
-pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
+pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>, body_name: Option<String>) where R: BufRead {
     let mut sections: Vec<Section> = Vec::new();
     
     let mut level: u8 = 0;
@@ -86,7 +86,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut sup = false;
     let mut sub = false;
     
-    let mut link: Option<String> = None;
+    let mut link: Option<Link> = None;
 
 
     let mut stanzas: Vec<Stanza> = Vec::new();
@@ -138,7 +138,20 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
-                    b"a" => link = get_href(e),
+                    b"a" => link = match get_href(e) {
+                        Some(l) => {
+                            let l_type: Option<String> = match get_attr(e, "type") {
+                                s if s.is_empty() => None,
+                                s => Some(s),
+                            };
+                            
+                            Some(Link {
+                                link: l,
+                                link_type: l_type
+                            })
+                        },
+                        None => None
+                    },
 
                     b"text-author" => in_text_author = true,
 
@@ -218,7 +231,9 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"text-author" => in_text_author = false,
                     
                     b"epigraph" | b"annotation" | b"cite" => {
-                        let sub_section = SubSection {
+                        let sub_section = Section {
+                            level: level + 1,
+                            id: None,
                             title,
                             paragraphs
                         };
@@ -330,6 +345,38 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         
         buf.clear();
     };
-    b_data.content.extend(sections);
+    if let Some(name) = body_name {
+        if name == "notes".to_string() {
+            let mut section = Section {
+                level: 0,
+                id: Some("NOTES".to_string()),
+                title: Vec::new(),
+                paragraphs: Vec::new()
+            };
+            
+            let mut is_first = true;
+            for sec in sections {
+                if is_first && sec.level == 0 {
+                    section.title = sec.title;
+                    section.paragraphs = sec.paragraphs;
+                    section.level = 0;
+                    
+                    is_first = false;
+                } else if is_first {
+                    section.paragraphs.push(Paragraph::Note(sec));
+                    is_first = false;
+                } else {
+                    section.paragraphs.push(Paragraph::Note(sec));
+                }
+            }
+            
+            b_data.content.push(section);
+        } else {
+            b_data.content.extend(sections)
+        }
+    } else {
+        b_data.content.extend(sections)
+    }
+    
     binary_reader(b_data, xml_reader, buf);
 }

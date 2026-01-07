@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::fb2_parser::Section;
 use crate::fb2_parser::content_reader::*;
 
@@ -8,7 +10,7 @@ const TAB: &str = "    ";
 fn get_head(head_title: &str, id: &Option<String>) -> String {
     let mut s = format!(r#"<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 {TAB}<head>
 {TAB}{TAB}<title>{head_title}</title>
 {TAB}{TAB}<link href="stylesheet.css" rel="stylesheet" type="text/css"/>
@@ -114,21 +116,37 @@ fn push_style_tags(s: &mut String, block: &TextBlock, end_tag: bool) {
     }
 }
 
+fn get_link_start(link: &Link) -> String {
+    match &link.link_type {
+        Some(t) if t == "note" => {
+            format!("<a class=\"reference\" epub:type=\"noteref\" href=\"notes.xhtml#{0}\" id=\"{0}\">", link.link)
+        },
+        Some(t) => format!("<a href=\"{0}\" epub:type=\"{t}\">", link.link),
+        None => format!("<a href=\"{}\">", link.link)
+    }
+}
+
 fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
     let mut s = String::new();
     s.push_str(tabs);
     s.push_str("<p>");
     
-    // с ссылками потом думать буду
     for block in blocks {
         let mut left_part = String::new();
         let mut right_part = String::new();
-        push_style_tags(&mut left_part, &block, false);
         push_style_tags(&mut right_part, &block, true);
+        if let Some(link) = &block.link {
+            right_part.push_str("</a>");
+            left_part.push_str(&get_link_start(&link));
+        };
+        push_style_tags(&mut left_part, &block, false);
         
         if *block != blocks[0] {
-            s.push(' ')
-        } // Сделать что-то с точками, запятыми, двоеточиями и так далее
+            let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':'];
+            if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
+                s.push(' ')
+            }
+        }
         
         if !left_part.is_empty() {
             s.push_str(&left_part);
@@ -144,30 +162,39 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
     return s
 }
 
-fn unwrap_paragraph(paragraph: &Paragraph, indent: usize) -> String {
+fn unwrap_img(href: &Option<String>, link_map: &HashMap<String, String>, tabs: &str) -> String {
+    if let Some(k) = href {
+        if let Some(link) = link_map.get(k) {
+            format!("{tabs}<img alt=\"\" src=\"{link}\"/>\n")
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    }
+}
+
+fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, indent: usize) -> String {
     let tabs = TAB.repeat(indent);
     
     match paragraph {
         Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs),
         Paragraph::EmptyLine => format!("{tabs}<empty-line/>\n"),
         Paragraph::Subtitle(text) => format!("{tabs}<subtitle>{text}</subtitle>\n"),
-        Paragraph::Image(_) => "".to_string(), // что-то придумать с ссылками
+        Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
         Paragraph::V(text) => format!("{tabs}<p class=\"v\">{text}</p>\n"),
         Paragraph::TextAuthor(text) => format!("{tabs}<p class=\"text-author\">{text}</p>\n"),
-        Paragraph::Epigraph(sub_section) => "".to_string(),
-        Paragraph::Cite(sub_section) => "".to_string(),
-        Paragraph::Annotation(sub_section) => "".to_string(),
-        Paragraph::Poem(poem) => "".to_string()
+        Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
+        Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),
+        Paragraph::Annotation(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "annotation"),
+        Paragraph::Poem(_poem) => "".to_string(),
+        Paragraph::Note(_sub_section) => "".to_string()
     }
 }
 
-pub fn html_builder(section: &Section) -> String {
-    let mut html = String::new();
-    let mut indent = 2;
-    
-    html.push_str(&get_head("test", &section.id));
-    
-    html.push_str(
+fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent: usize, section_type: &str) -> String {
+    let mut s = String::new();
+    s.push_str(
         &unwrap_title(
             section.level,
             &section.title,
@@ -176,11 +203,28 @@ pub fn html_builder(section: &Section) -> String {
     );
     
     for paragraph in &section.paragraphs {
-        html.push_str(&unwrap_paragraph(&paragraph, indent))
-    }
+        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+    };
     
+    let tabs = TAB.repeat(indent - 1);
+    s = match section_type {
+        "epigraph" => format!("{tabs}<div class=\"epigraph\">\n{s}{tabs}</div>\n"),
+        "cite" => format!("{tabs}<div class=\"cite\">\n{s}{tabs}</div>\n"),
+        "annotation" => format!("{tabs}<div class=\"annotation\">\n{s}{tabs}</div>\n"),
+        "section" | _ => s
+    };
+    
+    return s
+}
+
+pub fn html_builder(section: &Section, link_map: &HashMap<String, String>, title: &str) -> String {
+    let mut html = String::new();
+    let indent = 2;
+    
+    html.push_str(&get_head(title, &section.id));
+    html.push_str(&unwrap_section(section, link_map, indent, "section"));
     html.push_str(&format!("{TAB}</body>\n</html>"));
-    // println!("{html}\n\n");
     
+    // println!("{html}\n\n");
     return html
 }

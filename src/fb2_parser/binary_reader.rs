@@ -20,6 +20,7 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
     };
     
     let mut is_it_body = false;
+    let mut body_name: Option<String> = None;
     
     
     loop {
@@ -28,6 +29,11 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
                 match e.name().as_ref() {
                     b"body" => {
                         is_it_body = true;
+                        body_name = match get_attr(e, "name") {
+                            s if s.is_empty() => None,
+                            s => Some(s)
+                        };
+                        
                         break
                     },
                     b"binary" => {
@@ -93,7 +99,7 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
     };
     
     if is_it_body {
-        content_reader(b_data, xml_reader, buf);
+        content_reader(b_data, xml_reader, buf, body_name);
     } else {
         b_data.images.extend(images);
     }
