@@ -158,8 +158,16 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         )?;
     };
     
-    
-    let mut new_book = File::create("new_book.epub")?;
+    let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '%', '&', '@', '#', '\'', '~', '^', '$'];
+    let mut book_name = format!("{}.epub", match &data.meta.title {
+        t if t.is_empty() => "new_book",
+        t => t
+    });
+
+    for c in &forbidden_chars {
+        book_name = book_name.replace(*c, "_")
+    };
+    let mut new_book = File::create(&book_name)?;
     builder.generate(&mut new_book)?;
  
     Ok(())
