@@ -13,7 +13,7 @@ fn get_head(head_title: &str, id: &Option<String>) -> String {
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 {TAB}<head>
 {TAB}{TAB}<title>{head_title}</title>
-{TAB}{TAB}<link href="stylesheet.css" rel="stylesheet" type="text/css"/>
+{TAB}{TAB}<link href="../stylesheet.css" rel="stylesheet" type="text/css"/>
 {TAB}</head>{}"#, "\n");
     
     s.push_str(
@@ -131,7 +131,7 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
     s.push_str(tabs);
     s.push_str("<p>");
     
-    for block in blocks {
+    for (index, block) in blocks.into_iter().enumerate() {
         let mut left_part = String::new();
         let mut right_part = String::new();
         push_style_tags(&mut right_part, &block, true);
@@ -141,10 +141,14 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
         };
         push_style_tags(&mut left_part, &block, false);
         
-        if *block != blocks[0] {
+        if index != 0 {
             let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':'];
+            let start_bracets = ['«', '(', '{', '['];
+            
             if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
-                s.push(' ')
+                if !start_bracets.iter().any(|c| blocks[index - 1].text.ends_with(*c)) {
+                    s.push(' ')
+                }
             }
         }
         

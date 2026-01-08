@@ -65,6 +65,7 @@ pub struct Section {
 
 
 pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>, body_name: Option<String>) where R: BufRead {
+    let decoder = xml_reader.decoder();
     let mut sections: Vec<Section> = Vec::new();
     
     let mut level: u8 = 0;
@@ -105,7 +106,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             Ok(Event::Start(ref e)) => {
                 match e.name().as_ref() {
                     b"section" => {
-                        section_id.push(get_attr(e, "id"));
+                        section_id.push(get_attr(e, "id", decoder));
                         
                         if !paragraphs.is_empty() | !title.is_empty() {
                             sections.push(Section {
@@ -138,9 +139,9 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"code" => code = true,
                     b"sup" => sup = true,
                     b"sub" => sub = true,
-                    b"a" => link = match get_href(e) {
+                    b"a" => link = match get_href(e, decoder) {
                         Some(l) => {
-                            let l_type: Option<String> = match get_attr(e, "type") {
+                            let l_type: Option<String> = match get_attr(e, "type", decoder) {
                                 s if s.is_empty() => None,
                                 s => Some(s),
                             };
@@ -326,7 +327,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                 match e.name().as_ref() {
                     b"p" | b"empty-line" => paragraphs.push(Paragraph::EmptyLine),
                     b"image" => {
-                        let href: Option<String> = get_href(e);
+                        let href: Option<String> = get_href(e, decoder);
                         paragraphs.push(Paragraph::Image(href));
                     },
                     _ => {}

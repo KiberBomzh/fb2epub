@@ -10,6 +10,7 @@ use crate::fb2_parser::content_reader::content_reader;
 
 
 pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
+    let decoder = xml_reader.decoder();
     let mut images: HashMap<String, Image> = HashMap::new();
     
     let mut in_binary = false;
@@ -29,7 +30,7 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
                 match e.name().as_ref() {
                     b"body" => {
                         is_it_body = true;
-                        body_name = match get_attr(e, "name") {
+                        body_name = match get_attr(e, "name", decoder) {
                             s if s.is_empty() => None,
                             s => Some(s)
                         };
@@ -39,8 +40,8 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
                     b"binary" => {
                         in_binary = true;
                         
-                        current_image.id = get_attr(e, "id");
-                        current_image.content_type = get_attr(e, "content-type");
+                        current_image.id = get_attr(e, "id", decoder);
+                        current_image.content_type = get_attr(e, "content-type", decoder);
                     },
                     _ => {}
                 }

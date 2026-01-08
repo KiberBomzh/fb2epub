@@ -11,6 +11,7 @@ use std::borrow::Cow;
 
 use quick_xml::reader::Reader;
 use quick_xml::events::BytesStart;
+use quick_xml::encoding::Decoder;
 
 
 use crate::fb2_parser::metadata_reader::metadata_reader;
@@ -36,12 +37,12 @@ pub struct Image {
 }
 
 
-fn get_href(e: &BytesStart) -> Option<String> {
+fn get_href(e: &BytesStart, decoder: Decoder) -> Option<String> {
     for attr_result in e.attributes() {
         if let Ok(attr) = attr_result {
             let key = String::from_utf8_lossy(attr.key.as_ref());
             if key.contains("href") {
-                return match attr.unescape_value() {
+                return match attr.decode_and_unescape_value(decoder) {
                     Ok(Cow::Borrowed(v)) => Some(
                         if v.starts_with("#") {
                             v[1..].to_string()
@@ -63,11 +64,11 @@ fn get_href(e: &BytesStart) -> Option<String> {
     return None
 }
 
-fn get_attr(e: &BytesStart, query: &str) -> String {
+fn get_attr(e: &BytesStart, query: &str, decoder: Decoder) -> String {
     match e.try_get_attribute(query) {
         Ok(Some(attr)) => {
             attr
-                .unescape_value()
+                .decode_and_unescape_value(decoder)
                 .unwrap_or(
                     "".to_string().into()
                 ).to_string()
@@ -79,7 +80,7 @@ fn get_attr(e: &BytesStart, query: &str) -> String {
 
 
 pub fn get_data(book: &PathBuf) -> BookData {
-    let file = File::open(book).unwrap();
+    let file = File::open(book).expect("Error while opening a FB2 book!");
     let reader = BufReader::new(file);
     let mut xml_reader = Reader::from_reader(reader);
     let mut buf = Vec::new();

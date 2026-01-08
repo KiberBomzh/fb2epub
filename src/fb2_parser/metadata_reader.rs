@@ -24,6 +24,7 @@ pub struct Metadata {
 
 
 pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Metadata where R: BufRead {
+    let decoder = xml_reader.decoder();
     let mut meta = Metadata {
         title: String::new(),
         authors: Vec::new(),
@@ -160,14 +161,14 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                     b"sequence" if in_title_info => {
                         sequence.name = match e.try_get_attribute("name") {
                             Ok(Some(attr)) => {
-                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
+                                attr.decode_and_unescape_value(decoder).unwrap_or("".to_string().into()).to_string()
                             },
                             Ok(None) => "".to_string(),
                             Err(_) => "".to_string()
                         };
                         sequence.number = match e.try_get_attribute("number") {
                             Ok(Some(attr)) => {
-                                attr.unescape_value().unwrap_or("".to_string().into()).to_string()
+                                attr.decode_and_unescape_value(decoder).unwrap_or("".to_string().into()).to_string()
                             },
                             Ok(None) => "".to_string(),
                             Err(_) => "".to_string()
@@ -179,7 +180,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
                         sequence.name.clear();
                         sequence.number.clear();
                     },
-                    b"image" if in_cover => meta.cover = get_href(e),
+                    b"image" if in_cover => meta.cover = get_href(e, decoder),
                     _ => {}
                 }
             }

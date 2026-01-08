@@ -15,6 +15,16 @@ use crate::fb2_parser;
 use crate::epub_creator::html_builder::html_builder;
 
 
+fn get_counter_str(c: usize) -> String {
+    if c < 10 {
+        format!("00{c}")
+    } else if c < 100 {
+        format!("0{c}")
+    } else {
+        c.to_string()
+    }
+}
+
 pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
@@ -88,12 +98,13 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         if let Some(k) = cover_key {
              if k == key { continue }
         };
+        let counter_str = get_counter_str(counter);
         
         let img_name: String;
         match &image.content_type[..] {
-            "image/png" => img_name = format!("images/{}.png", counter),
-            "image/jpeg" => img_name = format!("images/{}.jpg", counter),
-            "image/jpg" => img_name = format!("images/{}.jpg", counter),
+            "image/png" => img_name = format!("images/{}.png", counter_str),
+            "image/jpeg" => img_name = format!("images/{}.jpg", counter_str),
+            "image/jpg" => img_name = format!("images/{}.jpg", counter_str),
             _ => continue
         };
         
@@ -122,26 +133,29 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     // Добавление текстовых документов
     let mut counter = 0;
     for section in &data.content {
-        let file_name = if let Some(id) = &section.id {
+        let counter_str = get_counter_str(counter + 1);
+        let prefix = "text/".to_string();
+        let suffix = ".xhtml";
+        let file_name = &if let Some(id) = &section.id {
             if id == "NOTES" {
-                format!("text/notes.xhtml")
+                "notes".to_string()
             } else {
                 counter += 1;
-                format!("text/Section_{counter}.xhtml")
+                format!("section_{counter_str}")
             }
         } else {
             counter += 1;
-            format!("text/Section_{counter}.xhtml")
+            format!("section_{counter_str}")
         };
         
         let title = if section.title.is_empty() {
-            format!("Section_{counter}")
+            file_name.clone()
         } else if section.title.len() > 1 {
             let mut s = String::new();
             for line in &section.title {
                 s.push_str(line);
                 if *line != section.title[section.title.len() - 1] {
-                    s.push(' ')
+                    s.push_str(". ")
                 };
             };
             
@@ -152,7 +166,7 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         let level: i32 = (section.level + 1).into();
         let html_content = html_builder(&section, &link_map, &title);
         builder.add_content(
-            EpubContent::new(&file_name, html_content.as_bytes())
+            EpubContent::new(prefix + file_name + suffix, html_content.as_bytes())
                 .title(title)
                 .level(level)
         )?;
