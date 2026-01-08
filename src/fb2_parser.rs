@@ -78,31 +78,6 @@ fn get_attr(e: &BytesStart, query: &str) -> String {
 }
 
 
-// Функция для вывода секций, удобно для дебага
-fn print_sections(sections: &Vec<Section>, without_p: bool) {
-    let mut s = String::new();
-    let mut is_first = true;
-    for section in sections {
-        if is_first {
-            is_first = false;
-        } else {
-            std::io::stdin().read_line(&mut s).unwrap();
-            match s.trim() {
-                "q" | "quit" => break,
-                _ => {}
-            };
-            s.clear();
-        }
-        std::process::Command::new("clear").status().unwrap();
-        if without_p {
-            dbg!(&section.level);
-            dbg!(&section.title);
-        } else {
-            dbg!(&section);
-        };
-    };
-}
-
 pub fn get_data(book: &PathBuf) -> BookData {
     let file = File::open(book).unwrap();
     let reader = BufReader::new(file);
@@ -116,7 +91,6 @@ pub fn get_data(book: &PathBuf) -> BookData {
         images: HashMap::new()
     };
     content_reader(&mut data, &mut xml_reader, &mut buf, None);
-    // print_sections(&data.content, false);
     
     return data
 }
