@@ -28,6 +28,8 @@ pub struct Link {
 
 #[derive(Debug, Clone)]
 pub struct Poem {
+    pub level: u8,
+    pub id: Option<String>,
     pub title: Vec<String>,
     pub stanzas: Vec<Stanza>,
     pub paragraphs: Vec<Paragraph>,
@@ -36,6 +38,8 @@ pub struct Poem {
 
 #[derive(Debug, Clone)]
 pub struct Stanza {
+    pub level: u8,
+    pub id: Option<String>,
     pub title: Vec<String>,
     pub v: Vec<Paragraph>
 }
@@ -157,6 +161,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"text-author" => in_text_author = true,
 
                     b"epigraph" | b"annotation" | b"cite" => {
+                        section_id.push(get_attr(e, "id", decoder));
+                        
                         // перемещение для разделения
                         temp_titles.push(title.clone());
                         temp_paragraphs.push(paragraphs.clone());
@@ -167,6 +173,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
 
                     b"poem" => {
                         in_poem = true;
+                        section_id.push(get_attr(e, "id", decoder));
 
                         temp_titles.push(title.clone());
                         temp_paragraphs.push(paragraphs.clone());
@@ -176,6 +183,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     },
                     b"stanza" if in_poem => {
                         in_stanza = true;
+                        section_id.push(get_attr(e, "id", decoder));
 
                         temp_titles.push(title.clone());
                         temp_paragraphs.push(paragraphs.clone());
@@ -234,7 +242,11 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"epigraph" | b"annotation" | b"cite" => {
                         let sub_section = Section {
                             level: level + 1,
-                            id: None,
+                            id: match section_id.pop() {
+                                Some(id) if id.is_empty() => None,
+                                Some(id) => Some(id),
+                                None => None
+                            },
                             title,
                             paragraphs
                         };
@@ -256,6 +268,12 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         in_poem = false;
 
                         let poem = Poem {
+                            level: level + 1,
+                            id: match section_id.pop() {
+                                Some(id) if id.is_empty() => None,
+                                Some(id) => Some(id),
+                                None => None
+                            },
                             title,
                             stanzas: stanzas.clone(),
                             paragraphs,
@@ -274,6 +292,12 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         in_stanza = false;
 
                         let stanza = Stanza {
+                            level: level + 1,
+                            id: match section_id.pop() {
+                                Some(id) if id.is_empty() => None,
+                                Some(id) => Some(id),
+                                None => None
+                            },
                             title,
                             v: paragraphs
                         };

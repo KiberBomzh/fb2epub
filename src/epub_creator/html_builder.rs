@@ -134,15 +134,19 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
     for (index, block) in blocks.into_iter().enumerate() {
         let mut left_part = String::new();
         let mut right_part = String::new();
+        let mut is_note = false;
         push_style_tags(&mut right_part, &block, true);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
             left_part.push_str(&get_link_start(&link));
+            if let Some(t) = &link.link_type {
+                if t == "note" {is_note = true}
+            };
         };
         push_style_tags(&mut left_part, &block, false);
         
-        if index != 0 {
-            let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':'];
+        if index != 0 && !is_note {
+            let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
             let start_bracets = ['«', '(', '{', '['];
             
             if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
@@ -191,9 +195,67 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
         Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
         Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),
         Paragraph::Annotation(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "annotation"),
-        Paragraph::Poem(_poem) => "".to_string(),
-        Paragraph::Note(_sub_section) => "".to_string()
+        Paragraph::Poem(poem) => unwrap_poem(&poem, link_map, indent + 1),
+        Paragraph::Note(sub_section) => unwrap_section(&sub_section, link_map, indent + 2, "note")
     }
+}
+
+fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -> String {
+    let mut s = String::new();
+    s.push_str(
+        &unwrap_title(
+            poem.level,
+            &poem.title,
+            indent
+        )
+    );
+    
+    for stanza in &poem.stanzas {
+        s.push_str(&unwrap_stanza(&stanza, link_map, indent + 1))
+    };
+    
+    for paragraph in &poem.paragraphs {
+        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+    };
+    
+    if !poem.date.is_empty() {
+        s.push_str(
+            &format!("{}<p class\"date\">{}</p>\n", TAB.repeat(indent), poem.date)
+        )
+    };
+    
+    let tabs = TAB.repeat(indent - 1);
+    s = if let Some(i) = &poem.id {
+        format!("{tabs}<div class=\"poem\" id=\"{i}\">\n{s}{tabs}</div>\n")
+    } else {
+        format!("{tabs}<div class=\"poem\">\n{s}{tabs}</div>\n")
+    };
+    
+    return s
+}
+
+fn unwrap_stanza(stanza: &Stanza, link_map: &HashMap<String, String>, indent: usize) -> String {
+    let mut s = String::new();
+    s.push_str(
+        &unwrap_title(
+            stanza.level,
+            &stanza.title,
+            indent
+        )
+    );
+    
+    for paragraph in &stanza.v {
+        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+    };
+    
+    let tabs = TAB.repeat(indent - 1);
+    s = if let Some(i) = &stanza.id {
+        format!("{tabs}<div class=\"stanza\" id=\"{i}\">\n{s}{tabs}</div>\n")
+    } else {
+        format!("{tabs}<div class=\"stanza\">\n{s}{tabs}</div>\n")
+    };
+    
+    return s
 }
 
 fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent: usize, section_type: &str) -> String {
@@ -212,9 +274,38 @@ fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent:
     
     let tabs = TAB.repeat(indent - 1);
     s = match section_type {
-        "epigraph" => format!("{tabs}<div class=\"epigraph\">\n{s}{tabs}</div>\n"),
-        "cite" => format!("{tabs}<div class=\"cite\">\n{s}{tabs}</div>\n"),
-        "annotation" => format!("{tabs}<div class=\"annotation\">\n{s}{tabs}</div>\n"),
+        "epigraph" => {
+            if let Some(i) = &section.id {
+                format!("{tabs}<div class=\"epigraph\" id=\"{i}\">\n{s}{tabs}</div>\n")
+            } else {
+                format!("{tabs}<div class=\"epigraph\">\n{s}{tabs}</div>\n")
+            }
+        },
+        "cite" => {
+            if let Some(i) = &section.id {
+                format!("{tabs}<div class=\"cite\" id=\"{i}\">\n{s}{tabs}</div>\n")
+            } else {
+                format!("{tabs}<div class=\"cite\">\n{s}{tabs}</div>\n")
+            }
+        },
+        "annotation" => {
+            if let Some(i) = &section.id {
+                format!("{tabs}<div class=\"annotation\" id=\"{i}\">\n{s}{tabs}</div>\n")
+            } else {
+                format!("{tabs}<div class=\"annotation\">\n{s}{tabs}</div>\n")
+            }
+        },
+        "note" => {
+            let first_tabs = TAB.repeat(indent - 2);
+            let left_part = if let Some(i) = &section.id {
+                format!("{first_tabs}<div class=\"notes\">\n{tabs}<aside epub:type=\"footnote\" class=\"note\" id=\"{i}\">\n")
+            } else {
+                format!("{first_tabs}<div class=\"notes\">\n{tabs}<aside epub:type=\"footnote\" class=\"note\">\n")
+            };
+            let right_part = format!("{tabs}</aside>\n{first_tabs}</div>\n");
+            
+            left_part + &s + &right_part
+        },
         "section" | _ => s
     };
     

@@ -25,6 +25,21 @@ fn get_counter_str(c: usize) -> String {
     }
 }
 
+fn get_css() -> String {
+r#"h1, h2, h3, h4, h5, h6 {
+    text-align: center;
+}
+
+p {
+    text-align: justify;
+}
+
+.refernce {
+	line-height: 0.1;
+	vertical-align: super;
+}"#.to_string()
+}
+
 pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
@@ -149,7 +164,7 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         };
         
         let title = if section.title.is_empty() {
-            file_name.clone()
+            String::new()
         } else if section.title.len() > 1 {
             let mut s = String::new();
             for line in &section.title {
@@ -165,12 +180,20 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
         };
         let level: i32 = (section.level + 1).into();
         let html_content = html_builder(&section, &link_map, &title);
-        builder.add_content(
-            EpubContent::new(prefix + file_name + suffix, html_content.as_bytes())
-                .title(title)
-                .level(level)
-        )?;
+        if title.is_empty() {
+            builder.add_content(EpubContent::new(prefix + file_name + suffix, html_content.as_bytes()))?;
+        } else {
+            builder.add_content(
+                EpubContent::new(prefix + file_name + suffix, html_content.as_bytes())
+                    .title(title)
+                    .level(level)
+            )?;
+        }
+        
     };
+    
+    builder.stylesheet(get_css().as_bytes())?;
+    
     
     let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '%', '&', '@', '#', '\'', '~', '^', '$'];
     let mut book_name = format!("{}.epub", match &data.meta.title {
