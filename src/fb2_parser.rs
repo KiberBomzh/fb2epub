@@ -79,19 +79,19 @@ fn get_attr(e: &BytesStart, query: &str, decoder: Decoder) -> String {
 }
 
 
-pub fn get_data(book: &PathBuf) -> BookData {
-    let file = File::open(book).expect("Error while opening a FB2 book!");
+pub fn get_data(book: &PathBuf) -> Result<BookData, Box<dyn std::error::Error>> {
+    let file = File::open(book)?;
     let reader = BufReader::new(file);
     let mut xml_reader = Reader::from_reader(reader);
     let mut buf = Vec::new();
     
     
     let mut data = BookData {
-        meta: metadata_reader(&mut xml_reader, &mut buf),
+        meta: metadata_reader(&mut xml_reader, &mut buf)?,
         content: Vec::new(),
         images: HashMap::new()
     };
-    content_reader(&mut data, &mut xml_reader, &mut buf, None);
+    content_reader(&mut data, &mut xml_reader, &mut buf, None)?;
     
-    return data
+    return Ok(data)
 }

@@ -137,7 +137,9 @@ fn main() {
                 } else {
                     continue
                 };
-                fb2epub::run(file, &output, args.replace)
+                if let Err(err) = fb2epub::run(file, &output, args.replace) {
+                    eprintln!("{}", err)
+                }
             };
         }
     };

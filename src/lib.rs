@@ -32,15 +32,16 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 }
 */
 
-pub fn run(book: &PathBuf, output: &PathBuf, replace: bool) {
-    let data = fb2_parser::get_data(&book);
+pub fn run(book: &PathBuf, output: &PathBuf, replace: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let data = fb2_parser::get_data(&book)?;
     if let Err(err) = epub_creator::create_epub(&data, output) {
-        eprintln!("Error while creating Epub: {}!", err)
+        return Err(format!("Error while creating Epub: {}!", err).into())
     } else if replace {
         if let Err(er) = fs::remove_file(book) {
-            eprintln!("Error while deleting {:#?}: {}", book, er)
+            return Err(format!("Error while deleting {:#?}: {}", book, er).into())
         }
     };
-    
+
     // print_sections(&data.content, false);
+    Ok(())
 }

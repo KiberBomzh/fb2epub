@@ -68,7 +68,7 @@ pub struct Section {
 }
 
 
-pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>, body_name: Option<String>) where R: BufRead {
+pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>, body_name: Option<String>) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
     let decoder = xml_reader.decoder();
     let mut sections: Vec<Section> = Vec::new();
     
@@ -251,8 +251,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             paragraphs
                         };
 
-                        title = temp_titles.pop().unwrap();
-                        paragraphs = temp_paragraphs.pop().unwrap();
+                        title = temp_titles.pop().ok_or("Error while parsing fb2 content!")?;
+                        paragraphs = temp_paragraphs.pop().ok_or("Error while parsing fb2 content!")?;
 
                         paragraphs.push(
                             match e.name().as_ref() {
@@ -280,8 +280,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             date: date.clone()
                         };
 
-                        title = temp_titles.pop().unwrap();
-                        paragraphs = temp_paragraphs.pop().unwrap();
+                        title = temp_titles.pop().ok_or("Error while parsing fb2 content!")?;
+                        paragraphs = temp_paragraphs.pop().ok_or("Error while parsing fb2 content!")?;
 
                         paragraphs.push(Paragraph::Poem(poem));
 
@@ -302,8 +302,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             v: paragraphs
                         };
 
-                        title = temp_titles.pop().unwrap();
-                        paragraphs = temp_paragraphs.pop().unwrap();
+                        title = temp_titles.pop().ok_or("Error while parsing fb2 content!")?;
+                        paragraphs = temp_paragraphs.pop().ok_or("Error while parsing fb2 content!")?;
 
                         stanzas.push(stanza);
                     },
@@ -315,8 +315,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode()
-                    .unwrap()
+                    .decode()?
                     .into_owned();
                 
                 if !text.trim().is_empty() {
@@ -403,5 +402,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         b_data.content.extend(sections)
     }
     
-    binary_reader(b_data, xml_reader, buf);
+    binary_reader(b_data, xml_reader, buf)?;
+
+    Ok(())
 }

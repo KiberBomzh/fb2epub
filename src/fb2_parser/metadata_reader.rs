@@ -23,7 +23,7 @@ pub struct Metadata {
 }
 
 
-pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Metadata where R: BufRead {
+pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Result<Metadata, Box<dyn std::error::Error>> where R: BufRead {
     let decoder = xml_reader.decoder();
     let mut meta = Metadata {
         title: String::new(),
@@ -135,8 +135,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
             
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode()
-                    .unwrap()
+                    .decode()?
                     .into_owned();
                 
                 if in_title {
@@ -199,5 +198,5 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Meta
     };
     buf.clear();
     
-    return meta
+    return Ok(meta)
 }

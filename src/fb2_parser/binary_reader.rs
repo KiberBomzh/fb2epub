@@ -9,7 +9,7 @@ use crate::fb2_parser::Image;
 use crate::fb2_parser::content_reader::content_reader;
 
 
-pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) where R: BufRead {
+pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
     let decoder = xml_reader.decoder();
     let mut images: HashMap<String, Image> = HashMap::new();
     
@@ -69,8 +69,7 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
             
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode()
-                    .unwrap()
+                    .decode()?
                     .into_owned();
                 
                 
@@ -100,9 +99,10 @@ pub fn binary_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>
     };
     
     if is_it_body {
-        content_reader(b_data, xml_reader, buf, body_name);
+        content_reader(b_data, xml_reader, buf, body_name)?;
     } else {
         b_data.images.extend(images);
     }
+    Ok(())
 }
 
