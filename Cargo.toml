@@ -8,3 +8,5 @@ base64 = "0.22.1"
 clap = { version = "4.5.53", features = ["derive"] }
 epub-builder = "0.8.2"
 quick-xml = { version = "0.38.4", features = ["encoding"]}
+tempfile = "3.24.0"
+zip = "7.0.0"

@@ -39,7 +39,7 @@ fn read_dir(dir: &PathBuf, files: &mut Vec<PathBuf>, recursive: bool) -> std::io
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if let Some(ext) = extension.to_str() {
-                    if ext.to_lowercase() == "fb2" {
+                    if ext.to_lowercase() == "fb2" || ext.to_lowercase() == "zip" {
                         if !files.contains(&path) {files.push(path)}
                     }
                 }
@@ -71,7 +71,7 @@ fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if let Some(ext) = extension.to_str() {
-                    if ext.to_lowercase() == "fb2" {
+                    if ext.to_lowercase() == "fb2" || ext.to_lowercase() == "zip" {
                         if !files.contains(&path) {files.push(path)}
                     }
                 }
@@ -123,7 +123,9 @@ fn main() {
                         if output_path.is_dir() {
                             Some(output_path)
                         } else {
-                            panic!("There's no such path: {:#?}!", output_path)
+                            fs::create_dir_all(&output_path)
+                                .expect("Error while creating output folder");
+                            Some(output_path)
                         }
                     } else {
                         Some(output_path)
