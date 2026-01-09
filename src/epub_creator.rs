@@ -2,6 +2,7 @@ mod html_builder;
 
 use std::fs::File;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use epub_builder::EpubBuilder;
 use epub_builder::EpubContent;
@@ -40,7 +41,7 @@ p {
 }"#.to_string()
 }
 
-pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
+pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
     let mut link_map: HashMap<String, String> = HashMap::new();
@@ -57,9 +58,22 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     };
     
     if let Some(annotation) = &metadata.annotation {
-        for p in annotation {
-            builder.add_description(p);
+        let mut description = String::new();
+        for (i, p) in annotation.into_iter().enumerate() {
+            if i != 0 {
+                let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
+                let start_bracets = ['«', '(', '{', '['];
+                
+                if !punctuation_chars.iter().any(|c| p.starts_with(*c)) {
+                    if !start_bracets.iter().any(|c| annotation[i - 1].ends_with(*c)) {
+                        description.push(' ')
+                    }
+                }
+            };
+            
+            description.push_str(p);
         };
+        builder.add_description(description);
     };
     if let Some(seq) = &metadata.sequence {
         if !seq.name.is_empty() {
@@ -195,16 +209,8 @@ pub fn create_epub(data: &fb2_parser::BookData) -> Result<()> {
     builder.stylesheet(get_css().as_bytes())?;
     
     
-    let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '%', '&', '@', '#', '\'', '~', '^', '$'];
-    let mut book_name = format!("{}.epub", match &data.meta.title {
-        t if t.is_empty() => "new_book",
-        t => t
-    });
-
-    for c in &forbidden_chars {
-        book_name = book_name.replace(*c, "_")
-    };
-    let mut new_book = File::create(&book_name)?;
+    
+    let mut new_book = File::create(output)?;
     builder.generate(&mut new_book)?;
  
     Ok(())

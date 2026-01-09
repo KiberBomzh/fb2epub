@@ -2,6 +2,7 @@ mod fb2_parser;
 mod epub_creator;
 
 use std::path::PathBuf;
+use std::fs;
 
 
 /*
@@ -31,18 +32,15 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 }
 */
 
-pub fn start(book: &str) {
-    let path = PathBuf::from(book);
-    
-    // Проверки
-    if !path.exists() {
-        panic!("There's no such path: {:?}!", path)
-    } else if path.extension().unwrap() != "fb2" {
-        panic!("The file {:?} isn't fb2!", path)
+pub fn run(book: &PathBuf, output: &PathBuf, replace: bool) {
+    let data = fb2_parser::get_data(&book);
+    if let Err(err) = epub_creator::create_epub(&data, output) {
+        eprintln!("Error while creating Epub: {}!", err)
+    } else if replace {
+        if let Err(er) = fs::remove_file(book) {
+            eprintln!("Error while deleting {:#?}: {}", book, er)
+        }
     };
     
-    
-    let data = fb2_parser::get_data(&path);
-    epub_creator::create_epub(&data).expect("Error while creating Epub!");
     // print_sections(&data.content, false);
 }
