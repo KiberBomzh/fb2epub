@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::fs;
 
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 
 
 #[derive(Parser, Debug)]
@@ -26,6 +27,13 @@ struct Args {
     #[arg(long)]
     replace: bool
 }
+
+
+#[cfg(target_os = "windows")]
+fn is_windows() -> bool {true}
+
+#[cfg(not(target_os = "windows"))]
+fn is_windows() -> bool {false}
 
 
 fn read_dir(dir: &PathBuf, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
@@ -113,36 +121,57 @@ fn get_out_name(file: &PathBuf, output: Option<PathBuf>) -> Option<PathBuf> {
 
 fn main() {
     let args = Args::parse();
-    match get_files(&args.input, args.recursive) {
-        files if files.is_empty() => panic!("There's no fb2 books in input!"),
-        files => {
-            let output = match args.output {
-                Some(o) => {
-                    let output_path = PathBuf::from(o);
-                    if files.len() > 1 {
-                        if output_path.is_dir() {
-                            Some(output_path)
-                        } else {
-                            fs::create_dir_all(&output_path)
-                                .expect("Error while creating output folder");
-                            Some(output_path)
-                        }
-                    } else {
-                        Some(output_path)
-                    }
-                }
-                None => None
-            };
-            for file in &files {
-                let output = if let Some(o) = get_out_name(file, output.clone()) {
-                    o
+    let files = get_files(&args.input, args.recursive);
+    if files.is_empty() {
+        panic!("There's no fb2 books in input!")
+    };
+    
+    let output = match args.output {
+        Some(o) => {
+            let output_path = PathBuf::from(o);
+            if files.len() > 1 {
+                if output_path.is_dir() {
+                    Some(output_path)
                 } else {
-                    continue
-                };
-                if let Err(err) = fb2epub::run(file, &output, args.replace) {
-                    eprintln!("{}", err)
+                    fs::create_dir_all(&output_path)
+                        .expect("Error while creating output folder");
+                    Some(output_path)
                 }
+            } else {
+                Some(output_path)
+            }
+        }
+        None => None
+    };
+    
+    
+    for file in &files {
+        let output = if let Some(o) = get_out_name(file, output.clone()) {
+            o
+        } else {continue};
+        
+        if is_windows() {
+            if let Err(err) = fb2epub::run(file, &output, args.replace) {
+                eprintln!("{err}");
+            }
+        } else {
+            let file_name = if let Some(name) = file.file_name()
+                .and_then(|n| n.to_str()) {name}
+            else {continue};
+            
+            let sp = ProgressBar::new_spinner();
+            sp.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg:.green}").unwrap()
+            );
+            sp.enable_steady_tick(std::time::Duration::from_millis(100));
+            sp.set_message(file_name.to_owned());
+        
+            if let Err(err) = fb2epub::run(file, &output, args.replace) {
+                eprintln!("{err}");
             };
+            
+            sp.finish_and_clear();
         }
     };
 }
