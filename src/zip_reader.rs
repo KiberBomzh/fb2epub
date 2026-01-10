@@ -40,20 +40,31 @@ pub fn convert_archive(path: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn s
         return Err(format!("Nothing to convert in {:#?}", path).into())
     }
 
-    if !output.exists() {
-        if let Some(file) = files.first() {
-            crate::run(&file, output, false)?;
-            return Ok(())
-        }
+    if files.len() == 1 {
+        crate::run(&files[0], output, false)?;
+        return Ok(())
     };
 
-    let parent = output.parent().ok_or(format!("Cannot get parent folder for: {:#?}", path))?;
+    let mut parent = output.parent()
+            .ok_or(format!("Cannot get parent folder for: {:#?}", path))?
+            .to_path_buf();
+    
+    if !output.exists() {
+        let out_folder_name = output.file_name()
+            .and_then(|n| n.to_str())
+                .ok_or(format!("Cannot get output folder for: {:#?}", path))?;
+        
+        parent = if let Some(r_index) = out_folder_name.rfind(".epub") {
+            parent.join(format!("{}_out", &out_folder_name[..r_index]))
+        } else {output.to_path_buf()}
+    };
+    
     for file in &files {
-        let file_output = parent.join(
-            file.file_name()
-            .ok_or(format!("Cannot get file_name for: {:#?}", file))?
-                .to_str().ok_or(format!("Cannot get file_name for: {:#?}", file))?.to_string() + ".epub"
-        );
+        let file_name = if let Some(name) = file
+            .file_stem().and_then(|os| os.to_str()) {
+                name.to_string() + ".epub"
+        } else {continue};
+        let file_output = parent.join(file_name);
         crate::run(file, &file_output, false)?;
     };
 
