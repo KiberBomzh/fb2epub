@@ -161,16 +161,15 @@ fn main() {
         } else {continue};
         
         
-        let file_name = if let Some(name) = file.file_name()
-            .and_then(|n| n.to_str()) {name}
-        else {continue};
-        
         if is_windows() {
-            if files.len() > 1 {println!("{file_name}")};
             if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
                 eprintln!("{err}")
             }
         } else {
+            let file_name = if let Some(name) = file.file_name()
+                .and_then(|n| n.to_str()) {name}
+            else {continue};
+            
             let sp = ProgressBar::new_spinner();
             sp.set_style(
                 ProgressStyle::default_spinner()

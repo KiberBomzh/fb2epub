@@ -218,6 +218,9 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &
     
     let mut new_book = File::create(output)?;
     builder.generate(&mut new_book)?;
- 
+    
+    #[cfg(target_os = "windows")]
+    println!("Saved to {:#?}", output);
+    
     Ok(())
 }
