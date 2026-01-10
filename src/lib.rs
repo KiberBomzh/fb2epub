@@ -55,9 +55,9 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
 }
 
 
-pub fn run(book: &PathBuf, output: &PathBuf, replace: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(book: &PathBuf, output: &PathBuf, replace: bool, styles_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
-        crate::zip_reader::convert_archive(book, &output)?;
+        crate::zip_reader::convert_archive(book, &output, styles_path)?;
         if replace {fs::remove_file(book)?}
         return Ok(())
     };
@@ -80,7 +80,7 @@ pub fn run(book: &PathBuf, output: &PathBuf, replace: bool) -> Result<(), Box<dy
     
     
     // Создание EPUB
-    if let Err(err) = epub_creator::create_epub(&data, &output) {
+    if let Err(err) = epub_creator::create_epub(&data, &output, styles_path) {
         return Err(format!("Error while creating Epub: {}!", err).into())
     } else if replace {fs::remove_file(book)?};
 

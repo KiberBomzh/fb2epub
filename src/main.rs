@@ -19,6 +19,10 @@ struct Args {
     #[arg(short, long)]
     output: Option<String>,
     
+    /// Custom css styles for a book. Path to .css file
+    #[arg(long)]
+    styles: Option<String>,
+    
     /// Include all books from subdirs of given in --input dirrctory.
     #[arg(short, long)]
     recursive: bool,
@@ -144,21 +148,29 @@ fn main() {
         None => None
     };
     
+    let styles_path = if let Some(styles) = args.styles {
+        let s_path = PathBuf::from(styles);
+        if s_path.is_file() {Some(s_path)}
+        else {None}
+    } else {None};
+    
     
     for file in &files {
         let output = if let Some(o) = get_out_name(file, output.clone()) {
             o
         } else {continue};
         
+        
+        let file_name = if let Some(name) = file.file_name()
+            .and_then(|n| n.to_str()) {name}
+        else {continue};
+        
         if is_windows() {
-            if let Err(err) = fb2epub::run(file, &output, args.replace) {
-                eprintln!("{err}");
+            if files.len() > 1 {println!("{file_name}")};
+            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
+                eprintln!("{err}")
             }
         } else {
-            let file_name = if let Some(name) = file.file_name()
-                .and_then(|n| n.to_str()) {name}
-            else {continue};
-            
             let sp = ProgressBar::new_spinner();
             sp.set_style(
                 ProgressStyle::default_spinner()
@@ -167,7 +179,7 @@ fn main() {
             sp.enable_steady_tick(std::time::Duration::from_millis(100));
             sp.set_message(file_name.to_owned());
         
-            if let Err(err) = fb2epub::run(file, &output, args.replace) {
+            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
                 eprintln!("{err}");
             };
             

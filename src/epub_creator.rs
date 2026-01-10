@@ -1,6 +1,6 @@
 mod html_builder;
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -41,7 +41,11 @@ p {
 }"#.to_string()
 }
 
-pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf) -> Result<()> {
+fn get_css_from_file(s_path: &PathBuf) -> std::io::Result<Vec<u8>> {
+    fs::read(s_path)
+}
+
+pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
     let mut link_map: HashMap<String, String> = HashMap::new();
@@ -157,8 +161,6 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf) -> Result<()> 
     }};
     
     
-    // level = 0 - это coverpage
-    
     // Добавление текстовых документов
     let mut counter = 0;
     for section in &data.content {
@@ -206,8 +208,12 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf) -> Result<()> 
         
     };
     
-    builder.stylesheet(get_css().as_bytes())?;
-    
+    // Добавление стилей
+    if let Some(s_path) = styles_path {
+        builder.stylesheet(&get_css_from_file(s_path)?[..])?;
+    } else {
+        builder.stylesheet(get_css().as_bytes())?;
+    };
     
     
     let mut new_book = File::create(output)?;
