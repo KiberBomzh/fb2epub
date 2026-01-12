@@ -14,6 +14,7 @@ use base64::{Engine as _, engine::general_purpose};
 
 use crate::fb2_parser;
 use crate::epub_creator::html_builder::html_builder;
+use crate::fb2_parser::content_reader::*;
 
 
 fn get_counter_str(c: usize) -> String {
@@ -24,6 +25,50 @@ fn get_counter_str(c: usize) -> String {
     } else {
         c.to_string()
     }
+}
+
+fn unwrap_title(title: &Vec<Paragraph>) -> String {
+    if title.is_empty() {
+        return String::new()
+    };
+    
+    let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
+    let start_bracets = ['«', '(', '{', '['];
+                
+    
+    let mut result = String::new();
+    for p in title {
+        let text = &if let Paragraph::Text(blocks) = p {
+            let mut s = String::new();
+            for (index, block) in blocks.into_iter().enumerate() {
+                if block == &blocks[0] {
+                    s.push_str(&block.text);
+                    continue
+                };
+                
+                
+                if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
+                    if !start_bracets.iter().any(|c| blocks[index - 1].text.ends_with(*c)) {
+                        s.push(' ')
+                    }
+                };
+                
+                s.push_str(&block.text);
+            };
+            
+            s
+        } else {continue};
+        
+        if text.is_empty() {continue}
+        
+        if p != &title[0] {
+            result.push_str(". ")
+        };
+        
+        result.push_str(text)
+    };
+    
+    return result
 }
 
 fn get_css() -> String {
@@ -179,21 +224,7 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &
             format!("section_{counter_str}")
         };
         
-        let title = if section.title.is_empty() {
-            String::new()
-        } else if section.title.len() > 1 {
-            let mut s = String::new();
-            for line in &section.title {
-                s.push_str(line);
-                if *line != section.title[section.title.len() - 1] {
-                    s.push_str(". ")
-                };
-            };
-            
-            s
-        } else {
-            section.title[0].clone()
-        };
+        let title = unwrap_title(&section.title);
         let level: i32 = (section.level + 1).into();
         let html_content = html_builder(&section, &link_map, &title);
         if title.is_empty() {

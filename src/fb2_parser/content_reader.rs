@@ -26,44 +26,44 @@ pub struct Link {
     pub link_type: Option<String>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Poem {
     pub level: u8,
     pub id: Option<String>,
-    pub title: Vec<String>,
+    pub title: Vec<Paragraph>,
     pub stanzas: Vec<Stanza>,
     pub paragraphs: Vec<Paragraph>,
     pub date: Vec<TextBlock>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Stanza {
     pub level: u8,
     pub id: Option<String>,
-    pub title: Vec<String>,
+    pub title: Vec<Paragraph>,
     pub v: Vec<Paragraph>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
     V(Vec<TextBlock>),
     TextAuthor(Vec<TextBlock>),
+    Subtitle(Vec<TextBlock>),
     Note(Section),
     Epigraph(Section),
     Cite(Section),
     Annotation(Section),
     Poem(Poem),
     Image(Option<String>),
-    Subtitle(String),
     EmptyLine
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Section {
     pub level: u8,
     pub id: Option<String>,
-    pub title: Vec<String>,
+    pub title: Vec<Paragraph>,
     pub paragraphs: Vec<Paragraph>
 }
 
@@ -74,10 +74,10 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     
     let mut level: u8 = 0;
     let mut section_id: Vec<String> = Vec::new();
-    let mut title: Vec<String> = Vec::new();
+    let mut title: Vec<Paragraph> = Vec::new();
     let mut paragraphs: Vec<Paragraph> = Vec::new();
     let mut paragraph: Vec<TextBlock> = Vec::new();
-    let mut temp_titles: Vec<Vec<String>> = Vec::new();
+    let mut temp_titles: Vec<Vec<Paragraph>> = Vec::new();
     let mut temp_paragraphs: Vec<Vec<Paragraph>> = Vec::new();
     
     let mut in_title = false;
@@ -133,7 +133,11 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         
                         level += 1;
                     },
-                    b"title" => in_title = true,
+                    b"title" => {
+                        in_title = true;
+                        temp_paragraphs.push(paragraphs.clone());
+                        paragraphs.clear();
+                    },
                     b"subtitle" => in_subtitle = true,
                     b"p" => in_p = true,
                     
@@ -220,8 +224,18 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         
                         level -= 1;
                     },
-                    b"title" => in_title = false,
-                    b"subtitle" => in_subtitle = false,
+                    b"title" => {
+                        in_title = false;
+                        title = paragraphs;
+                        paragraphs = temp_paragraphs.pop().ok_or("Error while parsing fb2 content!")?;
+                    },
+                    b"subtitle" => {
+                        in_subtitle = false;
+                        if !paragraph.is_empty() {
+                            paragraphs.push(Paragraph::Subtitle(paragraph.clone()));
+                            paragraph.clear();
+                        }
+                    },
                     b"p" => {
                         in_p = false;
                         if !paragraph.is_empty() {
@@ -332,11 +346,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                 
                 if !text.trim().is_empty() {
                     let t_trimmed = text.trim().to_string();
-                    if in_title {
-                        title.push(t_trimmed)
-                    } else if in_subtitle {
-                        paragraphs.push(Paragraph::Subtitle(t_trimmed))
-                    } else if in_date {
+                    if in_date {
                         date.push(TextBlock {
                             text: t_trimmed,
                             strong,
@@ -348,7 +358,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             link: link.clone()
                         });
                         link = None;
-                    } else if in_p || in_v || in_text_author {
+                    } else if in_p || in_v || in_text_author || in_subtitle || in_title {
                         paragraph.push(TextBlock {
                             text: t_trimmed,
                             strong,

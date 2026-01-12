@@ -26,7 +26,7 @@ fn get_head(head_title: &str, id: &Option<String>) -> String {
     return s
 }
 
-fn unwrap_title(level: u8, title: &Vec<String>, indent: usize) -> String {
+fn unwrap_title(level: u8, title: &Vec<Paragraph>, indent: usize, link_map: &HashMap<String, String>) -> String {
     if !title.is_empty() {
         let tag_name = match level {
             0 | 1 => "h1",
@@ -39,28 +39,25 @@ fn unwrap_title(level: u8, title: &Vec<String>, indent: usize) -> String {
         let tag_start = format!("<{tag_name}>");
         let tag_end = format!("</{tag_name}>");
         
-        if title.len() > 1 {
-            let start_line = TAB.repeat(indent).to_string() + &tag_start;
-            let end_line = TAB.repeat(indent).to_string() + &tag_end;
-            let mut result = String::new();
-            
-            result.push_str(&start_line);
-            result.push('\n');
-            let p_indent = TAB.repeat(indent + 1);
-            
-            for block in title {
-                result.push_str(
-                    &format!("{p_indent}<p>{block}</p>\n")
-                )
-            };
-            
-            result.push_str(&end_line);
-            result.push('\n');
-            
-            return result
-        } else {
-            return TAB.repeat(indent).to_string() + &tag_start + &title[0] + &tag_end + "\n"
-        }
+        let start_line = TAB.repeat(indent).to_string() + &tag_start;
+        let end_line = TAB.repeat(indent).to_string() + &tag_end;
+        let mut result = String::new();
+        
+        result.push_str(&start_line);
+        result.push('\n');
+        
+        
+        for p in title {
+            result.push_str(
+                &unwrap_paragraph(p, link_map, indent + 1)
+            )
+        };
+        
+        result.push_str(&end_line);
+        result.push('\n');
+        
+        return result
+    
     } else {
         return "".to_string()
     }
@@ -134,6 +131,7 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str) -> Strin
         "v" => "<p class=\"v\">",
         "text-author" => "<p class=\"text-author\">",
         "date" => "<p class=\"date\">",
+        "subtitle" => "<subtitle>",
         _ => "<p>"
     });
     
@@ -171,7 +169,11 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str) -> Strin
         }
     }
     
-    s.push_str("</p>\n");
+    if block_type == "subtitle" {
+        s.push_str("</subtitle>\n")
+    } else {
+        s.push_str("</p>\n")
+    }
     
     return s
 }
@@ -194,7 +196,7 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
     match paragraph {
         Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, "p"),
         Paragraph::EmptyLine => format!("{tabs}<empty-line/>\n"),
-        Paragraph::Subtitle(text) => format!("{tabs}<subtitle>{text}</subtitle>\n"),
+        Paragraph::Subtitle(blocks) => unwrap_blocks(blocks, &tabs, "subtitle"),
         Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
         Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, "v"),
         Paragraph::TextAuthor(blocks) => unwrap_blocks(blocks, &tabs, "text-author"),
@@ -212,7 +214,8 @@ fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -
         &unwrap_title(
             poem.level,
             &poem.title,
-            indent
+            indent,
+            link_map
         )
     );
     
@@ -246,7 +249,8 @@ fn unwrap_stanza(stanza: &Stanza, link_map: &HashMap<String, String>, indent: us
         &unwrap_title(
             stanza.level,
             &stanza.title,
-            indent
+            indent,
+            link_map
         )
     );
     
@@ -270,7 +274,8 @@ fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent:
         &unwrap_title(
             section.level,
             &section.title,
-            indent
+            indent,
+            link_map
         )
     );
     
