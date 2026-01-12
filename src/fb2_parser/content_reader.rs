@@ -33,7 +33,7 @@ pub struct Poem {
     pub title: Vec<String>,
     pub stanzas: Vec<Stanza>,
     pub paragraphs: Vec<Paragraph>,
-    pub date: String
+    pub date: Vec<TextBlock>
 }
 
 #[derive(Debug, Clone)]
@@ -48,14 +48,14 @@ pub struct Stanza {
 pub enum Paragraph {
     Text(Vec<TextBlock>),
     V(Vec<TextBlock>),
+    TextAuthor(Vec<TextBlock>),
     Note(Section),
     Epigraph(Section),
     Cite(Section),
     Annotation(Section),
     Poem(Poem),
-    TextAuthor(String),
-    Subtitle(String),
     Image(Option<String>),
+    Subtitle(String),
     EmptyLine
 }
 
@@ -95,7 +95,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
 
 
     let mut stanzas: Vec<Stanza> = Vec::new();
-    let mut date = String::new();
+    let mut date: Vec<TextBlock> = Vec::new();
 
     let mut in_text_author = false;
 
@@ -237,7 +237,13 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                     b"sup" => sup = false,
                     b"sub" => sub = false,
 
-                    b"text-author" => in_text_author = false,
+                    b"text-author" => {
+                        in_text_author = false;
+                        if !paragraph.is_empty() {
+                            paragraphs.push(Paragraph::TextAuthor(paragraph.clone()));
+                            paragraph.clear();
+                        }
+                    },
                     
                     b"epigraph" | b"annotation" | b"cite" => {
                         let sub_section = Section {
@@ -327,14 +333,22 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                 if !text.trim().is_empty() {
                     let t_trimmed = text.trim().to_string();
                     if in_title {
-                        title.push(text)
+                        title.push(t_trimmed)
                     } else if in_subtitle {
                         paragraphs.push(Paragraph::Subtitle(t_trimmed))
-                    } else if in_text_author {
-                        paragraphs.push(Paragraph::TextAuthor(t_trimmed))
                     } else if in_date {
-                        date = t_trimmed
-                    } else if in_p || in_v {
+                        date.push(TextBlock {
+                            text: t_trimmed,
+                            strong,
+                            emphasis,
+                            strikethrough,
+                            code,
+                            sup,
+                            sub,
+                            link: link.clone()
+                        });
+                        link = None;
+                    } else if in_p || in_v || in_text_author {
                         paragraph.push(TextBlock {
                             text: t_trimmed,
                             strong,

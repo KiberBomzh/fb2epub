@@ -126,12 +126,16 @@ fn get_link_start(link: &Link) -> String {
     }
 }
 
-fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, is_v: bool) -> String {
+fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str) -> String {
     let mut s = String::new();
     s.push_str(tabs);
     
-    if is_v {s.push_str("<p class=\"v\">")}
-    else {s.push_str("<p>")};
+    s.push_str(match block_type {
+        "v" => "<p class=\"v\">",
+        "text-author" => "<p class=\"text-author\">",
+        "date" => "<p class=\"date\">",
+        _ => "<p>"
+    });
     
     for (index, block) in blocks.into_iter().enumerate() {
         let mut left_part = String::new();
@@ -188,12 +192,12 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
     let tabs = TAB.repeat(indent);
     
     match paragraph {
-        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, false),
+        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, "p"),
         Paragraph::EmptyLine => format!("{tabs}<empty-line/>\n"),
         Paragraph::Subtitle(text) => format!("{tabs}<subtitle>{text}</subtitle>\n"),
         Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
-        Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, true),
-        Paragraph::TextAuthor(text) => format!("{tabs}<p class=\"text-author\">{text}</p>\n"),
+        Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, "v"),
+        Paragraph::TextAuthor(blocks) => unwrap_blocks(blocks, &tabs, "text-author"),
         Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
         Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),
         Paragraph::Annotation(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "annotation"),
@@ -222,7 +226,7 @@ fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -
     
     if !poem.date.is_empty() {
         s.push_str(
-            &format!("{}<p class\"date\">{}</p>\n", TAB.repeat(indent), poem.date)
+            &unwrap_blocks(&poem.date, &TAB.repeat(indent), "date")
         )
     };
     
