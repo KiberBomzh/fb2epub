@@ -115,14 +115,14 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &
                 
                 if !punctuation_chars.iter().any(|c| p.starts_with(*c)) {
                     if !start_bracets.iter().any(|c| annotation[i - 1].ends_with(*c)) {
-                        description.push(' ')
+                        description.push('\n')
                     }
                 }
             };
             
             description.push_str(p);
         };
-        builder.add_description(description);
+        builder.metadata("description", description)?;
     };
     if let Some(seq) = &metadata.sequence {
         if !seq.name.is_empty() {
