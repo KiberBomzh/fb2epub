@@ -126,10 +126,12 @@ fn get_link_start(link: &Link) -> String {
     }
 }
 
-fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str) -> String {
+fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, is_v: bool) -> String {
     let mut s = String::new();
     s.push_str(tabs);
-    s.push_str("<p>");
+    
+    if is_v {s.push_str("<p class=\"v\">")}
+    else {s.push_str("<p>")};
     
     for (index, block) in blocks.into_iter().enumerate() {
         let mut left_part = String::new();
@@ -186,11 +188,11 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
     let tabs = TAB.repeat(indent);
     
     match paragraph {
-        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs),
+        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, false),
         Paragraph::EmptyLine => format!("{tabs}<empty-line/>\n"),
         Paragraph::Subtitle(text) => format!("{tabs}<subtitle>{text}</subtitle>\n"),
         Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
-        Paragraph::V(text) => format!("{tabs}<p class=\"v\">{text}</p>\n"),
+        Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, true),
         Paragraph::TextAuthor(text) => format!("{tabs}<p class=\"text-author\">{text}</p>\n"),
         Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
         Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),

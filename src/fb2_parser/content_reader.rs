@@ -47,12 +47,12 @@ pub struct Stanza {
 #[derive(Debug, Clone)]
 pub enum Paragraph {
     Text(Vec<TextBlock>),
+    V(Vec<TextBlock>),
     Note(Section),
     Epigraph(Section),
     Cite(Section),
     Annotation(Section),
     Poem(Poem),
-    V(String),
     TextAuthor(String),
     Subtitle(String),
     Image(Option<String>),
@@ -307,7 +307,13 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
 
                         stanzas.push(stanza);
                     },
-                    b"v" => in_v = false,
+                    b"v" => {
+                        in_v = false;
+                        if !paragraph.is_empty() {
+                            paragraphs.push(Paragraph::V(paragraph.clone()));
+                            paragraph.clear();
+                        }
+                    },
                     b"date" => in_date = false,
                     _ => {}
                 }
@@ -328,9 +334,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                         paragraphs.push(Paragraph::TextAuthor(t_trimmed))
                     } else if in_date {
                         date = t_trimmed
-                    } else if in_v {
-                        paragraphs.push(Paragraph::V(t_trimmed))
-                    } else if in_p {
+                    } else if in_p || in_v {
                         paragraph.push(TextBlock {
                             text: t_trimmed,
                             strong,
