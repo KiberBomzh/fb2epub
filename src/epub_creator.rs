@@ -86,77 +86,101 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_pat
     
     
     // Добавление метаданных
-    {let metadata = &data.meta;
-    builder
-        .metadata("lang", &metadata.language)?
-        .metadata("title", &metadata.title)?;
-    
-    for author in &metadata.authors {
-        builder.metadata("author", author)?;
-    };
-    
-    if let Some(annotation) = &metadata.annotation {
-        let mut description = String::new();
-        for (i, p) in annotation.into_iter().enumerate() {
-            if i != 0 {
-                let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
-                let start_bracets = ['«', '(', '{', '['];
-                
-                if !punctuation_chars.iter().any(|c| p.starts_with(*c)) {
-                    if !start_bracets.iter().any(|c| annotation[i - 1].ends_with(*c)) {
-                        description.push('\n')
+    {
+        let metadata = &data.meta;
+        builder
+            .epub_version(epub_builder::EpubVersion::V33)
+            .metadata("generator", "fb2epub")?
+            .metadata("lang", &metadata.language)?
+            .metadata("title", &metadata.title)?;
+        
+        for author in &metadata.authors {
+            builder.metadata("author", author)?;
+        };
+        
+        if let Some(annotation) = &metadata.annotation {
+            let mut description = String::new();
+            for (i, p) in annotation.into_iter().enumerate() {
+                if i != 0 {
+                    let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
+                    let start_bracets = ['«', '(', '{', '['];
+                    
+                    if !punctuation_chars.iter().any(|c| p.starts_with(*c)) {
+                        if !start_bracets.iter().any(|c| annotation[i - 1].ends_with(*c)) {
+                            description.push('\n')
+                        }
                     }
-                }
+                };
+                
+                description.push_str(p);
             };
-            
-            description.push_str(p);
+            builder.metadata("description", description)?;
         };
-        builder.metadata("description", description)?;
-    };
-    if let Some(seq) = &metadata.sequence {
-        if !seq.name.is_empty() {
-            builder.add_metadata_opf(
-                Box::new(epub_builder::MetadataOpf{
-                    name: String::from("calibre:series"),
-                    content: seq.name.clone()
-                })
-            );
-        };
-        if !seq.number.is_empty() {
-            builder.add_metadata_opf(
-                Box::new(epub_builder::MetadataOpf{
-                    name: String::from("calibre:series_index"),
-                    content: seq.number.clone()
-                })
-            );
-        };
-    };
-    
-    if let Some(k) = cover_key {
-        if let Some(img) = &data.images.get(k) {
-            let cover_name =  match &img.content_type[..] {
-                "image/png" => format!("images/cover.png"),
-                "image/jpeg" => format!("images/cover.jpg"),
-                "image/jpg" => format!("images/cover.jpg"),
-                _ => "".to_string()
+        if let Some(seq) = &metadata.sequence {
+            if !seq.name.is_empty() {
+                builder.add_metadata_opf(
+                    Box::new(epub_builder::MetadataOpfV3 {
+                        property: String::from("belongs-to-collection"),
+                        content: seq.name.clone(),
+                        dir: None,
+                        id: Some(String::from("series-id")),
+                        refines: None,
+                        scheme: None,
+                        xml_lang: None
+                    })
+                );
+                builder.add_metadata_opf(
+                    Box::new(epub_builder::MetadataOpfV3 {
+                        property: String::from("collection-type"),
+                        content: String::from("series"),
+                        dir: None,
+                        id: None,
+                        refines: Some(String::from("#series-id")),
+                        scheme: None,
+                        xml_lang: None
+                    })
+                );
             };
 
-            if !cover_name.is_empty() {
-                match general_purpose::STANDARD.decode(&img.binary) {
-                    Ok(b) => {
-                        builder.add_resource(
-                            cover_name,
-                            &b[..],
-                            img.content_type.clone()
-                        )?;
-                    },
-                    Err(err) => eprintln!("Image decoder error: {}", err)
+            if !seq.number.is_empty() {
+                builder.add_metadata_opf(
+                    Box::new(epub_builder::MetadataOpfV3{
+                        property: String::from("group-position"),
+                        content: seq.number.clone(),
+                        dir: None,
+                        id: None,
+                        refines: Some(String::from("#series-id")),
+                        scheme: None,
+                        xml_lang: None
+                    })
+                );
+            };
+        };
+        
+        if let Some(k) = cover_key {
+            if let Some(img) = &data.images.get(k) {
+                let cover_name =  match &img.content_type[..] {
+                    "image/png" => format!("images/cover.png"),
+                    "image/jpeg" => format!("images/cover.jpg"),
+                    "image/jpg" => format!("images/cover.jpg"),
+                    _ => "".to_string()
+                };
+
+                if !cover_name.is_empty() {
+                    match general_purpose::STANDARD.decode(&img.binary) {
+                        Ok(b) => {
+                            builder.add_resource(
+                                cover_name,
+                                &b[..],
+                                img.content_type.clone()
+                            )?;
+                        },
+                        Err(err) => eprintln!("Image decoder error: {}", err)
+                    }
                 }
             }
-        }
-    };
-    
-    builder.metadata("generator", "fb2epub")?;}
+        };
+    }
     
     
     // Добавление картинок
