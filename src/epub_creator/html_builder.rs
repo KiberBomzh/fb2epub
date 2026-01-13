@@ -113,19 +113,31 @@ fn push_style_tags(s: &mut String, block: &TextBlock, end_tag: bool) {
     }
 }
 
-fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> String {
+fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> (String, bool) {
+    let mut is_note = false;
     let href = if link.link.starts_with("#") {
-        if let Some(l) = link_map.get(&link.link) {l}
-        else {&link.link}
+        if let Some(l) = link_map.get(&link.link) {
+            if l.starts_with("comments") || l.starts_with("notes") {
+                is_note = true;
+            };
+            
+            l
+        } else {&link.link}
     } else {&link.link};
 
-    match &link.link_type {
+    let link_start = match &link.link_type {
         Some(t) if t == "note" => {
             format!("<a class=\"reference\" epub:type=\"noteref\" href=\"{href}\" id=\"{}\">", &link.link[1..])
         },
         Some(t) => format!("<a href=\"{href}\" epub:type=\"{t}\">"),
-        None => format!("<a href=\"{href}\">")
-    }
+        None => if is_note {
+            format!("<a class=\"reference\" epub:type=\"noteref\" href=\"{href}\" id=\"{}\">", &link.link[1..])
+        } else {
+            format!("<a href=\"{href}\">")
+        }
+    };
+    
+    return (link_start, is_note)
 }
 
 fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map: &HashMap<String, String>) -> String {
@@ -144,13 +156,13 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
         let mut left_part = String::new();
         let mut right_part = String::new();
         let mut is_note = false;
+        
         push_style_tags(&mut right_part, &block, true);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
-            left_part.push_str(&get_link_start(&link, link_map));
-            if let Some(t) = &link.link_type {
-                if t == "note" {is_note = true}
-            };
+            let link_start: String;
+            (link_start, is_note) = get_link_start(&link, link_map);
+            left_part.push_str(&link_start);
         };
         push_style_tags(&mut left_part, &block, false);
         

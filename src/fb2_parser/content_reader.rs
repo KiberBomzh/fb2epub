@@ -113,12 +113,17 @@ pub fn content_reader<R>(
     let mut in_v = false;
     let mut in_date = false;
 
+    let mut current_file_name: String;
     let is_it_notes = match body_name {
-        Some(ref s) if s == "notes" => true,
-        _ => false
+        Some(ref s) if s == "notes" || s == "comments" => {
+            current_file_name = s.clone() + ".xhtml";
+            true
+        },
+        _ => {
+            current_file_name = format!("section_{}.xhtml", get_counter_str(sections_counter + 1));
+            false
+        }
     };
-    let mut current_file_name = if is_it_notes {"notes.xhtml".to_string()}
-    else {format!("section_{}.xhtml", get_counter_str(sections_counter + 1))};
     
     
     loop {
@@ -460,11 +465,11 @@ pub fn content_reader<R>(
         buf.clear();
     };
     if let Some(name) = body_name {
-        if name == "notes".to_string() {
+        if &name == "notes" || &name == "comments" {
             let mut section = Section {
                 level: 0,
                 id: None,
-                file_name: Some("notes".to_string()),
+                file_name: Some(name.clone()),
                 title: Vec::new(),
                 paragraphs: Vec::new()
             };
