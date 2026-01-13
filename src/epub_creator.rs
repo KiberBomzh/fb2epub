@@ -214,7 +214,7 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_pat
                 image.content_type.clone()
             )?;
         
-        data.link_map.insert(format!("#{key}"), format!("../{img_name}"));
+        data.link_map.insert(key.clone(), format!("../{img_name}"));
         counter += 1;
     }};
     
