@@ -5,6 +5,7 @@ use quick_xml::reader::Reader;
 
 use crate::fb2_parser::{get_href, get_attr};
 use crate::fb2_parser::binary_reader::binary_reader;
+use crate::fb2_parser::get_counter_str;
 
 
 #[derive(Debug, Clone, PartialEq)]
@@ -17,7 +18,7 @@ pub struct TextBlock {
     pub sup: bool,               // верхний индекс
     pub sub: bool,               // нижний индекс
     
-    pub link: Option<Link>     // ссылка
+    pub link: Option<Link>       // ссылка
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -63,12 +64,20 @@ pub enum Paragraph {
 pub struct Section {
     pub level: u8,
     pub id: Option<String>,
+    pub file_name: Option<String>,
     pub title: Vec<Paragraph>,
     pub paragraphs: Vec<Paragraph>
 }
 
 
-pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R>, buf: &mut Vec<u8>, body_name: Option<String>) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
+pub fn content_reader<R>(
+        b_data: &mut super::BookData,
+        xml_reader: &mut Reader<R>,
+        buf: &mut Vec<u8>, 
+        body_name: Option<String>,
+        mut sections_counter: usize
+    ) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
+
     let decoder = xml_reader.decoder();
     let mut sections: Vec<Section> = Vec::new();
     
@@ -103,6 +112,13 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
     let mut in_stanza = false;
     let mut in_v = false;
     let mut in_date = false;
+
+    let is_it_notes = match body_name {
+        Some(ref s) if s == "notes" => true,
+        _ => false
+    };
+    let mut current_file_name = if is_it_notes {"notes.xhtml".to_string()}
+    else {format!("section_{}.xhtml", get_counter_str(sections_counter + 1))};
     
     
     loop {
@@ -118,15 +134,29 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                                 id: if level > 0 {
                                     match section_id.pop() {
                                         Some(id) if id.is_empty() => None,
-                                        Some(id) => Some(id),
+                                        Some(id) => {
+                                            let l_id = format!("#{id}");
+                                            b_data.link_map.insert(l_id.clone(), current_file_name.clone() + &l_id);
+
+                                            Some(id)
+                                        },
                                         None => None
                                     }
                                 } else {None},
+                                file_name: if is_it_notes {None} 
+                                    else {
+                                        sections_counter += 1;
+                                        Some(format!(
+                                            "section_{}", get_counter_str(sections_counter)))
+                                    },
                                 title: title.clone(),
                                 paragraphs: paragraphs.clone()
                             });
                             
-                            
+                            if !is_it_notes {
+                                current_file_name = format!("section_{}.xhtml", get_counter_str(sections_counter + 1))
+                            };
+
                             title.clear();
                             paragraphs.clear();
                         };
@@ -210,14 +240,28 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                                 level: level,
                                 id: match section_id.pop() {
                                     Some(id) if id.is_empty() => None,
-                                    Some(id) => Some(id),
+                                    Some(id) => {
+                                            let l_id = format!("#{id}");
+                                            b_data.link_map.insert(l_id.clone(), current_file_name.clone() + &l_id);
+
+                                            Some(id)
+                                        },
                                     None => None
                                 },
+                                file_name: if is_it_notes {None} 
+                                    else {
+                                        sections_counter += 1;
+                                        Some(format!(
+                                            "section_{}", get_counter_str(sections_counter)))
+                                    },
                                 title: title.clone(),
                                 paragraphs: paragraphs.clone()
                             });
                             
-                            
+                            if !is_it_notes {
+                                current_file_name = format!("section_{}.xhtml", get_counter_str(sections_counter + 1))
+                            };
+
                             title.clear();
                             paragraphs.clear();
                         };
@@ -264,9 +308,16 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             level: level + 1,
                             id: match section_id.pop() {
                                 Some(id) if id.is_empty() => None,
-                                Some(id) => Some(id),
+                                Some(id) => {
+                                    let l_id = format!("#{id}");
+                                    b_data.link_map.insert(l_id.clone(), current_file_name.clone() + &l_id);
+
+                                    Some(id)
+                                },
+
                                 None => None
                             },
+                            file_name: None,
                             title,
                             paragraphs
                         };
@@ -291,7 +342,13 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             level: level + 1,
                             id: match section_id.pop() {
                                 Some(id) if id.is_empty() => None,
-                                Some(id) => Some(id),
+                                Some(id) => {
+                                    let l_id = format!("#{id}");
+                                    b_data.link_map.insert(l_id.clone(), current_file_name.clone() + &l_id);
+
+                                    Some(id)
+                                },
+
                                 None => None
                             },
                             title,
@@ -315,7 +372,12 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
                             level: level + 1,
                             id: match section_id.pop() {
                                 Some(id) if id.is_empty() => None,
-                                Some(id) => Some(id),
+                                Some(id) => {
+                                    let l_id = format!("#{id}");
+                                    b_data.link_map.insert(l_id.clone(), current_file_name.clone() + &l_id);
+
+                                    Some(id)
+                                },
                                 None => None
                             },
                             title,
@@ -401,7 +463,8 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         if name == "notes".to_string() {
             let mut section = Section {
                 level: 0,
-                id: Some("NOTES".to_string()),
+                id: None,
+                file_name: Some("notes".to_string()),
                 title: Vec::new(),
                 paragraphs: Vec::new()
             };
@@ -409,6 +472,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
             let mut is_first = true;
             for sec in sections {
                 if is_first && sec.level == 0 {
+                    section.id = sec.id;
                     section.title = sec.title;
                     section.paragraphs = sec.paragraphs;
                     section.level = 0;
@@ -430,7 +494,7 @@ pub fn content_reader<R>(b_data: &mut super::BookData, xml_reader: &mut Reader<R
         b_data.content.extend(sections)
     }
     
-    binary_reader(b_data, xml_reader, buf)?;
+    binary_reader(b_data, xml_reader, buf, sections_counter)?;
 
     Ok(())
 }

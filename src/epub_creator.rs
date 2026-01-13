@@ -1,7 +1,6 @@
 mod html_builder;
 
 use std::fs::{self, File};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use epub_builder::EpubBuilder;
@@ -15,17 +14,8 @@ use base64::{Engine as _, engine::general_purpose};
 use crate::fb2_parser;
 use crate::epub_creator::html_builder::html_builder;
 use crate::fb2_parser::content_reader::*;
+use crate::fb2_parser::get_counter_str;
 
-
-fn get_counter_str(c: usize) -> String {
-    if c < 10 {
-        format!("00{c}")
-    } else if c < 100 {
-        format!("0{c}")
-    } else {
-        c.to_string()
-    }
-}
 
 fn unwrap_title(title: &Vec<Paragraph>) -> String {
     if title.is_empty() {
@@ -90,10 +80,9 @@ fn get_css_from_file(s_path: &PathBuf) -> std::io::Result<Vec<u8>> {
     fs::read(s_path)
 }
 
-pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<()> {
+pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<()> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
-    let mut link_map: HashMap<String, String> = HashMap::new();
     
     
     // Добавление метаданных
@@ -151,7 +140,7 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &
                 "image/jpg" => format!("images/cover.jpg"),
                 _ => "".to_string()
             };
-            
+
             if !cover_name.is_empty() {
                 match general_purpose::STANDARD.decode(&img.binary) {
                     Ok(b) => {
@@ -201,37 +190,28 @@ pub fn create_epub(data: &fb2_parser::BookData, output: &PathBuf, styles_path: &
                 image.content_type.clone()
             )?;
         
-        link_map.insert(key.to_string(), format!("../{img_name}"));
+        data.link_map.insert(format!("#{key}"), format!("../{img_name}"));
         counter += 1;
     }};
     
     
     // Добавление текстовых документов
-    let mut counter = 0;
+    let mut counter = 1;
     for section in &data.content {
-        let counter_str = get_counter_str(counter + 1);
         let prefix = "text/".to_string();
         let suffix = ".xhtml";
-        let file_name = &if let Some(id) = &section.id {
-            if id == "NOTES" {
-                "notes".to_string()
-            } else {
-                counter += 1;
-                format!("section_{counter_str}")
-            }
-        } else {
-            counter += 1;
-            format!("section_{counter_str}")
-        };
+        let file_name = if let Some(name) = &section.file_name {name.clone()}
+        else {format!("section_{}", get_counter_str(counter))};
+        counter += 1;
         
         let title = unwrap_title(&section.title);
         let level: i32 = (section.level + 1).into();
-        let html_content = html_builder(&section, &link_map, &title);
+        let html_content = html_builder(&section, &data.link_map, &title);
         if title.is_empty() {
-            builder.add_content(EpubContent::new(prefix + file_name + suffix, html_content.as_bytes()))?;
+            builder.add_content(EpubContent::new(prefix + &file_name + suffix, html_content.as_bytes()))?;
         } else {
             builder.add_content(
-                EpubContent::new(prefix + file_name + suffix, html_content.as_bytes())
+                EpubContent::new(prefix + &file_name + suffix, html_content.as_bytes())
                     .title(title)
                     .level(level)
             )?;

@@ -25,6 +25,8 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
         std::process::Command::new("clear").status().unwrap();
         if without_p {
             dbg!(&section.level);
+            dbg!(&section.file_name);
+            dbg!(&section.id);
             dbg!(&section.title);
         } else {
             dbg!(&section);
@@ -55,7 +57,11 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
 }
 
 
-pub fn run(book: &PathBuf, output: &PathBuf, replace: bool, styles_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(book: &PathBuf, 
+        output: &PathBuf, 
+        replace: bool, 
+        styles_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
         crate::zip_reader::convert_archive(book, &output, styles_path)?;
         if replace {fs::remove_file(book)?}
@@ -63,7 +69,7 @@ pub fn run(book: &PathBuf, output: &PathBuf, replace: bool, styles_path: &Option
     };
 
     // Чтение входного FB2
-    let data = fb2_parser::get_data(&book)?;
+    let mut data = fb2_parser::get_data(&book)?;
     
     
     // Проверка имени файла
@@ -80,11 +86,11 @@ pub fn run(book: &PathBuf, output: &PathBuf, replace: bool, styles_path: &Option
     
     
     // Создание EPUB
-    if let Err(err) = epub_creator::create_epub(&data, &output, styles_path) {
+    if let Err(err) = epub_creator::create_epub(&mut data, &output, styles_path) {
         return Err(format!("Error while creating Epub: {}!", err).into())
     } else if replace {fs::remove_file(book)?};
 
 
-    // print_sections(&data.content, false);
+    // print_sections(&data.content, true);
     return Ok(())
 }

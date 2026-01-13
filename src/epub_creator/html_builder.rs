@@ -113,17 +113,22 @@ fn push_style_tags(s: &mut String, block: &TextBlock, end_tag: bool) {
     }
 }
 
-fn get_link_start(link: &Link) -> String {
+fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> String {
+    let href = if link.link.starts_with("#") {
+        if let Some(l) = link_map.get(&link.link) {l}
+        else {&link.link}
+    } else {&link.link};
+
     match &link.link_type {
         Some(t) if t == "note" => {
-            format!("<a class=\"reference\" epub:type=\"noteref\" href=\"notes.xhtml#{0}\" id=\"{0}\">", link.link)
+            format!("<a class=\"reference\" epub:type=\"noteref\" href=\"{href}\" id=\"{}\">", &link.link[1..])
         },
-        Some(t) => format!("<a href=\"{0}\" epub:type=\"{t}\">", link.link),
-        None => format!("<a href=\"{}\">", link.link)
+        Some(t) => format!("<a href=\"{href}\" epub:type=\"{t}\">"),
+        None => format!("<a href=\"{href}\">")
     }
 }
 
-fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str) -> String {
+fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map: &HashMap<String, String>) -> String {
     let mut s = String::new();
     s.push_str(tabs);
     
@@ -142,7 +147,7 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str) -> Strin
         push_style_tags(&mut right_part, &block, true);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
-            left_part.push_str(&get_link_start(&link));
+            left_part.push_str(&get_link_start(&link, link_map));
             if let Some(t) = &link.link_type {
                 if t == "note" {is_note = true}
             };
@@ -194,12 +199,12 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
     let tabs = TAB.repeat(indent);
     
     match paragraph {
-        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, "p"),
+        Paragraph::Text(blocks) => unwrap_blocks(blocks, &tabs, "p", link_map),
         Paragraph::EmptyLine => format!("{tabs}<empty-line/>\n"),
-        Paragraph::Subtitle(blocks) => unwrap_blocks(blocks, &tabs, "subtitle"),
+        Paragraph::Subtitle(blocks) => unwrap_blocks(blocks, &tabs, "subtitle", link_map),
         Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
-        Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, "v"),
-        Paragraph::TextAuthor(blocks) => unwrap_blocks(blocks, &tabs, "text-author"),
+        Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, "v", link_map),
+        Paragraph::TextAuthor(blocks) => unwrap_blocks(blocks, &tabs, "text-author", link_map),
         Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
         Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),
         Paragraph::Annotation(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "annotation"),
@@ -229,7 +234,7 @@ fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -
     
     if !poem.date.is_empty() {
         s.push_str(
-            &unwrap_blocks(&poem.date, &TAB.repeat(indent), "date")
+            &unwrap_blocks(&poem.date, &TAB.repeat(indent), "date", link_map)
         )
     };
     
