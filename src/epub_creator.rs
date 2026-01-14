@@ -62,18 +62,7 @@ fn unwrap_title(title: &Vec<Paragraph>) -> String {
 }
 
 fn get_css() -> String {
-r#"h1, h2, h3, h4, h5, h6 {
-    text-align: center;
-}
-
-p {
-    text-align: justify;
-}
-
-.refernce {
-	line-height: 0.1;
-	vertical-align: super;
-}"#.to_string()
+    include_str!("../assets/stylesheet.css").to_string()
 }
 
 fn get_css_from_file(s_path: &PathBuf) -> std::io::Result<Vec<u8>> {
