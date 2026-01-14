@@ -5,8 +5,8 @@ p {
 }
 
 h1, h2, h3, h4, h5, h6, subtitle {
-	width: 80%;
-	margin: auto;
+    width: 80%;
+    margin: auto;
     display: block;
     font-weight: bold;
 }
@@ -18,9 +18,9 @@ h4 > p,
 h5 > p,
 h6 > p,
 subtitle {
-	text-indent: 0;
-	text-align: center;
-	line-height: 100%;
+    text-indent: 0;
+    text-align: center;
+    line-height: 100%;
 }
 
 
@@ -47,8 +47,8 @@ a {
 }
 
 empty-line {
-	height: 1em;
-	margin: 0px;
+    height: 1em;
+    margin: 0px;
 }
 
 
@@ -59,18 +59,18 @@ div.epigraph {
 }
 
 p.text-author {
-	text-align: right;
+    text-align: right;
 }
 
 
 div.cite {
-	display: block;
-	width: 80%;
-	margin: auto;
+    display: block;
+    width: 80%;
+    margin: auto;
 }
 
 div.cite > p {
-	text-align: left;
+    text-align: left;
 }
 
 
@@ -87,17 +87,17 @@ div.stanza {
 }
 
 p.v {
-	text-indent: 0;
-	text-align: center;
+    text-indent: 0;
+    text-align: center;
 }
 
 
 a.reference {
-	line-height: 0.1;
-	font-size: 70%;
-	vertical-align: super;
+    line-height: 0.1;
+    font-size: 70%;
+    vertical-align: super;
 }
 
 img {
-	max-width: 95%;
+    max-width: 95%;
 }
