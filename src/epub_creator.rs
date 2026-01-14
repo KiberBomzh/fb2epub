@@ -169,7 +169,7 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_pat
                 if !cover_name.is_empty() {
                     match general_purpose::STANDARD.decode(&img.binary) {
                         Ok(b) => {
-                            builder.add_resource(
+                            builder.add_cover_image(
                                 cover_name,
                                 &b[..],
                                 img.content_type.clone()
