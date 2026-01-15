@@ -28,16 +28,16 @@ fn get_head(head_title: &str, id: &Option<String>) -> String {
 
 fn unwrap_title(level: u8, title: &Vec<Paragraph>, indent: usize, link_map: &HashMap<String, String>) -> String {
     if !title.is_empty() {
-        let tag_name = match level {
-            0 | 1 => "h1",
-            2 => "h2",
-            3 => "h3",
-            4 => "h4",
-            5 => "h5",
-            _ => "h6",
+        let class_name = match level {
+            0 | 1 => "title1",
+            2 => "title2",
+            3 => "title3",
+            4 => "title4",
+            5 => "title5",
+            _ => "title6",
         };
-        let tag_start = format!("<{tag_name}>");
-        let tag_end = format!("</{tag_name}>");
+        let tag_start = format!("<div class=\"{class_name}\">");
+        let tag_end = "</div>".to_string();
         
         let start_line = TAB.repeat(indent).to_string() + &tag_start;
         let end_line = TAB.repeat(indent).to_string() + &tag_end;

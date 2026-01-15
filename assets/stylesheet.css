@@ -4,23 +4,49 @@ p {
     text-indent: 1em;
 }
 
-h1, h2, h3, h4, h5, h6, subtitle {
+
+.title1,
+.title2,
+.title3,
+.title4,
+.title5,
+.title6,
+subtitle {
     width: 80%;
     margin: auto;
     display: block;
     font-weight: bold;
 }
 
-h1 > p,
-h2 > p,
-h3 > p,
-h4 > p,
-h5 > p,
-h6 > p,
+.title1 > p,
+.title2 > p,
+.title3 > p,
+.title4 > p,
+.title5 > p,
+.title6 > p,
 subtitle {
     text-indent: 0;
     text-align: center;
     line-height: 100%;
+}
+
+.title1 {
+    font-size: 180%;
+}
+.title2 {
+    font-size: 160%;
+}
+.title3 {
+    font-size: 140%;
+}
+.title4 {
+    font-size: 130%;
+}
+.title5 {
+    font-size: 120%;
+}
+.title6 {
+    font-size: 110%;
 }
 
 
@@ -52,47 +78,48 @@ empty-line {
 }
 
 
-div.epigraph {
+d
+.epigraph {
     display: block;
     width: 70%;
     margin-left: 30%;
 }
 
-p.text-author {
+.text-author {
     text-align: right;
 }
 
 
-div.cite {
+.cite {
     display: block;
     width: 80%;
     margin: auto;
 }
 
-div.cite > p {
+.cite > p {
     text-align: left;
 }
 
 
-div.poem {
+.poem {
     display: block;
     width: 80%;
     margin: auto;
 }
 
-div.stanza {
+.stanza {
     display: block;
     margin-top: 12%;
     margin-bottom: 12%;
 }
 
-p.v {
+.v {
     text-indent: 0;
     text-align: center;
 }
 
 
-a.reference {
+.reference {
     line-height: 0.1;
     font-size: 70%;
     vertical-align: super;
