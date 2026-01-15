@@ -74,6 +74,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Resu
                     b"annotation" if in_title_info => in_annotation = true,
                     b"lang" if in_title_info => in_lang = true,
                     b"coverpage" if in_title_info => in_cover = true,
+                    b"image" if in_cover => meta.cover = get_href(e, decoder),
                     _ => {}
                 }
             }

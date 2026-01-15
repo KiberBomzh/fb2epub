@@ -232,6 +232,11 @@ pub fn content_reader<R>(
                     },
                     b"v" if in_stanza => in_v = true,
                     b"date" if in_poem => in_date = true,
+                    
+                    b"image" => {
+                        let href: Option<String> = get_href(e, decoder);
+                        paragraphs.push(Paragraph::Image(href));
+                    },
                     _ => {}
                 }
             }
