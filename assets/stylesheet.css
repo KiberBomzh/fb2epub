@@ -68,9 +68,6 @@ i {
     font-style: italic;
 }
 
-a {
-    text-decoration: underline;
-}
 
 empty-line {
     height: 1em;
@@ -78,7 +75,6 @@ empty-line {
 }
 
 
-d
 .epigraph {
     display: block;
     width: 70%;
@@ -109,8 +105,6 @@ d
 
 .stanza {
     display: block;
-    margin-top: 12%;
-    margin-bottom: 12%;
 }
 
 .v {
