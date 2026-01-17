@@ -1,6 +1,6 @@
 extern crate fb2epub;
 
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::fs;
 
 use clap::Parser;
@@ -40,7 +40,7 @@ fn is_windows() -> bool {true}
 fn is_windows() -> bool {false}
 
 
-fn read_dir(dir: &PathBuf, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
+fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
     let entries = fs::read_dir(dir)?;
     for entry in entries {
         let path = entry?.path();
@@ -94,7 +94,7 @@ fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
     return files
 }
 
-fn get_out_name(file: &PathBuf, output: Option<PathBuf>) -> Option<PathBuf> {
+fn get_out_name(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
     let suffix = ".epub";
     let file_stem: &str = if let Some(name) = file.file_stem() {
         if let Some(n) = name.to_str() {
@@ -148,9 +148,10 @@ fn main() {
         None => None
     };
     
-    let styles_path = if let Some(styles) = args.styles {
-        let s_path = PathBuf::from(styles);
-        if s_path.is_file() {Some(s_path)}
+    let s_path: PathBuf;
+    let styles_path: Option<&Path> = if let Some(styles) = args.styles {
+        s_path = PathBuf::from(styles);
+        if s_path.is_file() {Some(&s_path)}
         else {None}
     } else {None};
     
@@ -162,7 +163,7 @@ fn main() {
         
         
         if is_windows() {
-            match fb2epub::run(file, &output, args.replace, &styles_path) {
+            match fb2epub::run(file, &output, args.replace, styles_path) {
                 Ok(o) => println!("Saved to {:#?}", o),
                 Err(err) => eprintln!("{err}")
             }
@@ -179,7 +180,7 @@ fn main() {
             sp.enable_steady_tick(std::time::Duration::from_millis(100));
             sp.set_message(file_name.to_owned());
         
-            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
+            if let Err(err) = fb2epub::run(file, &output, args.replace, styles_path) {
                 eprintln!("{err}")
             };
             

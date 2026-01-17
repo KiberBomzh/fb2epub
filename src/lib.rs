@@ -2,7 +2,7 @@ mod fb2_parser;
 mod epub_creator;
 mod zip_reader;
 
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::fs;
 
 
@@ -35,7 +35,7 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 }
 */
 
-fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
+fn get_free_output(output: &Path) -> Option<PathBuf> {
     let mut file_name = output.file_stem()?.to_str()?;
     
     if file_name.ends_with(".fb2") {
@@ -53,7 +53,7 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
         counter += 1;
     };
     
-    return Some(free_output.to_path_buf())
+    return Some(free_output.to_owned())
 }
 
 
@@ -62,13 +62,13 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
 /// If replace = true input fb2 book will be deleted.
 ///
 /// styles_path is path to custom stylesheet, for default styles use None.
-pub fn run(book: &PathBuf, 
-        output: &PathBuf, 
+pub fn run(book: &Path, 
+        output: &Path, 
         replace: bool, 
-        styles_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        styles_path: Option<&Path>) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
-        match crate::zip_reader::convert_archive(book, &output, styles_path) {
+        match crate::zip_reader::convert_archive(book, output, styles_path) {
             Ok(o) if replace => {
                 fs::remove_file(book)?;
                 return Ok(o)
@@ -79,7 +79,7 @@ pub fn run(book: &PathBuf,
     };
 
     // Чтение входного FB2
-    let mut data = fb2_parser::get_data(&book)?;
+    let mut data = fb2_parser::get_data(book)?;
     // print_sections(&data.content, true);
     
     
@@ -90,10 +90,8 @@ pub fn run(book: &PathBuf,
         }
     };
     
-    let mut output = output.clone();
-    if let Some(o) = get_free_output(&output) {
-        output = o;
-    };
+    let output =  &if let Some(o) = get_free_output(output) {o}
+    else {output.to_owned()};
     
     
     // Создание EPUB

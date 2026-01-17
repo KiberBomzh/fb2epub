@@ -3,7 +3,7 @@ pub mod content_reader;
 pub mod binary_reader;
 
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
 use std::collections::HashMap;
@@ -81,7 +81,7 @@ pub fn get_counter_str(c: usize) -> String {
 }
 
 
-pub fn get_data(book: &PathBuf) -> Result<BookData, Box<dyn std::error::Error>> {
+pub fn get_data(book: &Path) -> Result<BookData, Box<dyn std::error::Error>> {
     let file = File::open(book)?;
     let reader = BufReader::new(file);
     let mut xml_reader = Reader::from_reader(reader);

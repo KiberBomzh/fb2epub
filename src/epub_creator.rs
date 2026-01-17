@@ -1,7 +1,7 @@
 mod html_builder;
 
 use std::fs::{self, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use epub_builder::EpubBuilder;
 use epub_builder::EpubContent;
@@ -65,11 +65,11 @@ fn get_css() -> String {
     include_str!("../assets/stylesheet.css").to_string()
 }
 
-fn get_css_from_file(s_path: &PathBuf) -> std::io::Result<Vec<u8>> {
+fn get_css_from_file(s_path: &Path) -> std::io::Result<Vec<u8>> {
     fs::read(s_path)
 }
 
-pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<PathBuf> {
+pub fn create_epub(data: &mut fb2_parser::BookData, output: &Path, styles_path: Option<&Path>) -> Result<PathBuf> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
     

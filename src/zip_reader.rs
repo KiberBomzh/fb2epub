@@ -5,7 +5,7 @@ use std::io;
 use tempfile::TempDir;
 
 
-fn extract_books(path: &PathBuf, temp_path: &Path) -> zip::result::ZipResult<Vec<PathBuf>> {
+fn extract_books(path: &Path, temp_path: &Path) -> zip::result::ZipResult<Vec<PathBuf>> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
@@ -31,7 +31,7 @@ fn extract_books(path: &PathBuf, temp_path: &Path) -> zip::result::ZipResult<Vec
     
 }
 
-pub fn convert_archive(path: &PathBuf, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn convert_archive(path: &Path, output: &Path, styles_path: Option<&Path>) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
 
