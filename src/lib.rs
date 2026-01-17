@@ -60,16 +60,22 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
 pub fn run(book: &PathBuf, 
         output: &PathBuf, 
         replace: bool, 
-        styles_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+        styles_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
-        crate::zip_reader::convert_archive(book, &output, styles_path)?;
-        if replace {fs::remove_file(book)?}
-        return Ok(())
+        match crate::zip_reader::convert_archive(book, &output, styles_path) {
+            Ok(o) if replace => {
+                fs::remove_file(book)?;
+                return Ok(o)
+            },
+            Ok(o) => return Ok(o),
+            Err(err) => return Err(err)
+        }
     };
 
     // Чтение входного FB2
     let mut data = fb2_parser::get_data(&book)?;
+    // print_sections(&data.content, true);
     
     
     // Проверка имени файла
@@ -86,11 +92,12 @@ pub fn run(book: &PathBuf,
     
     
     // Создание EPUB
-    if let Err(err) = epub_creator::create_epub(&mut data, &output, styles_path) {
-        return Err(format!("Error while creating Epub: {}!", err).into())
-    } else if replace {fs::remove_file(book)?};
-
-
-    // print_sections(&data.content, true);
-    return Ok(())
+    match epub_creator::create_epub(&mut data, &output, styles_path) {
+        Ok(o) if replace => {
+            fs::remove_file(book)?;
+            return Ok(o)
+        },
+        Ok(o) => return Ok(o),
+        Err(err) => Err(format!("Error while creating Epub: {}!", err).into())
+    }
 }

@@ -162,8 +162,9 @@ fn main() {
         
         
         if is_windows() {
-            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
-                eprintln!("{err}")
+            match fb2epub::run(file, &output, args.replace, &styles_path) {
+                Ok(o) => println!("Saved to {:#?}", o),
+                Err(err) => eprintln!("{err}")
             }
         } else {
             let file_name = if let Some(name) = file.file_name()
@@ -179,7 +180,7 @@ fn main() {
             sp.set_message(file_name.to_owned());
         
             if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path) {
-                eprintln!("{err}");
+                eprintln!("{err}")
             };
             
             sp.finish_and_clear();

@@ -31,7 +31,7 @@ fn extract_books(path: &PathBuf, temp_path: &Path) -> zip::result::ZipResult<Vec
     
 }
 
-pub fn convert_archive(path: &PathBuf, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn convert_archive(path: &PathBuf, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
 
@@ -41,8 +41,7 @@ pub fn convert_archive(path: &PathBuf, output: &PathBuf, styles_path: &Option<Pa
     }
 
     if files.len() == 1 {
-        crate::run(&files[0], output, false, styles_path)?;
-        return Ok(())
+        return crate::run(&files[0], output, false, styles_path);
     };
 
     let mut parent = output.parent()
@@ -68,5 +67,5 @@ pub fn convert_archive(path: &PathBuf, output: &PathBuf, styles_path: &Option<Pa
         crate::run(file, &file_output, false, styles_path)?;
     };
 
-    Ok(())
+    Ok(parent)
 }

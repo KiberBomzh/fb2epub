@@ -69,7 +69,7 @@ fn get_css_from_file(s_path: &PathBuf) -> std::io::Result<Vec<u8>> {
     fs::read(s_path)
 }
 
-pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<()> {
+pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_path: &Option<PathBuf>) -> Result<PathBuf> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
     
@@ -243,8 +243,6 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &PathBuf, styles_pat
     let mut new_book = File::create(output)?;
     builder.generate(&mut new_book)?;
     
-    #[cfg(target_os = "windows")]
-    println!("Saved to {:#?}", output);
     
-    Ok(())
+    Ok(output.to_path_buf())
 }
