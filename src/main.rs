@@ -1,11 +1,11 @@
-// Здесь будет только то что нужно для запуска в cli
-// Остальное в lib.rs для возможности использования проекта как библиотеки
+extern crate fb2epub;
 
 use std::path::PathBuf;
 use std::fs;
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+
 
 
 #[derive(Parser, Debug)]

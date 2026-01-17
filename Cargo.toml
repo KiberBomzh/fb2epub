@@ -1,13 +1,32 @@
 [package]
 name = "fb2epub"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
+description = "Converter from fb2 to epub"
+license = "MIT"
+repository = "https://github.com/KiberBomzh/fb2epub"
+readme = "README.md"
+categories = ["command-line-utilities"]
+keywords = ["fb2", "epub", "cli", "converter"]
+
+[lib]
+name = "fb2epub"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fb2epub"
+path = "src/main.rs"
+required-features = ["bin-deps"]
 
 [dependencies]
 base64 = "0.22.1"
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"], optional = true }
 epub-builder = "0.8.2"
 indicatif = "0.18.3"
 quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24.0"
 zip = "7.0.0"
+
+[features]
+default = []
+bin-deps = ["dep:clap"]

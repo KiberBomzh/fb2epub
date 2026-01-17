@@ -57,6 +57,11 @@ fn get_free_output(output: &PathBuf) -> Option<PathBuf> {
 }
 
 
+/// Main function, takes path to fb2 book (or zip archive), returns path to new epub book.
+///
+/// If replace = true input fb2 book will be deleted.
+///
+/// styles_path is path to custom stylesheet, for default styles use None.
 pub fn run(book: &PathBuf, 
         output: &PathBuf, 
         replace: bool, 
