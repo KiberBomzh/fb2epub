@@ -62,13 +62,16 @@ fn get_free_output(output: &Path) -> Option<PathBuf> {
 /// If replace = true input fb2 book will be deleted.
 ///
 /// styles_path is path to custom stylesheet, for default styles use None.
-pub fn run(book: &Path, 
-        output: &Path, 
-        replace: bool, 
-        styles_path: Option<&Path>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn run(
+    book: &Path, 
+    output: &Path, 
+    replace: bool, 
+    styles_path: &Option<PathBuf>,
+    suspend_error_messages: bool
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
-        match crate::zip_reader::convert_archive(book, output, styles_path) {
+        match crate::zip_reader::convert_archive(book, output, styles_path, suspend_error_messages) {
             Ok(o) if replace => {
                 fs::remove_file(book)?;
                 return Ok(o)
@@ -95,7 +98,7 @@ pub fn run(book: &Path,
     
     
     // Создание EPUB
-    match epub_creator::create_epub(&mut data, &output, styles_path) {
+    match epub_creator::create_epub(&mut data, &output, styles_path, suspend_error_messages) {
         Ok(o) if replace => {
             fs::remove_file(book)?;
             return Ok(o)

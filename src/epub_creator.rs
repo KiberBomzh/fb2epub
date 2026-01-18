@@ -69,7 +69,12 @@ fn get_css_from_file(s_path: &Path) -> std::io::Result<Vec<u8>> {
     fs::read(s_path)
 }
 
-pub fn create_epub(data: &mut fb2_parser::BookData, output: &Path, styles_path: Option<&Path>) -> Result<PathBuf> {
+pub fn create_epub(
+    data: &mut fb2_parser::BookData,
+    output: &Path,
+    styles_path: &Option<PathBuf>,
+    suspend_error_messages: bool
+) -> Result<PathBuf> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
     let cover_key = &data.meta.cover;
     
@@ -164,7 +169,9 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &Path, styles_path: 
                                 img.content_type.clone()
                             )?;
                         },
-                        Err(err) => eprintln!("Image decoder error: {}", err)
+                        Err(err) => if !suspend_error_messages {
+                            eprintln!("Image decoder error: {}", err)
+                        }
                     }
                 }
             }
@@ -191,7 +198,9 @@ pub fn create_epub(data: &mut fb2_parser::BookData, output: &Path, styles_path: 
         let binary = match general_purpose::STANDARD.decode(&image.binary) {
             Ok(b) => b,
             Err(err) => {
-                eprintln!("Image decoder error: {}", err);
+                if !suspend_error_messages {
+                    eprintln!("Image decoder error: {}", err)
+                };                        
                 continue
             }
         };

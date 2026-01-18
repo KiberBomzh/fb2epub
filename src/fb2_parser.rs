@@ -81,7 +81,8 @@ pub fn get_counter_str(c: usize) -> String {
 }
 
 
-pub fn get_data(book: &Path) -> Result<BookData, Box<dyn std::error::Error>> {
+pub fn get_data(book: &Path
+) -> Result<BookData, Box<dyn std::error::Error>> {
     let file = File::open(book)?;
     let reader = BufReader::new(file);
     let mut xml_reader = Reader::from_reader(reader);
@@ -95,7 +96,11 @@ pub fn get_data(book: &Path) -> Result<BookData, Box<dyn std::error::Error>> {
         images: HashMap::new(),
         link_map: HashMap::new()
     };
-    content_reader(&mut data, &mut xml_reader, &mut buf, None, sections_counter)?;
+    content_reader(&mut data,
+        &mut xml_reader,
+        &mut buf,
+        None,
+        sections_counter)?;
     
     return Ok(data)
 }

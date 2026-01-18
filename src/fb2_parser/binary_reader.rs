@@ -9,10 +9,12 @@ use crate::fb2_parser::Image;
 use crate::fb2_parser::content_reader::content_reader;
 
 
-pub fn binary_reader<R>(b_data: &mut super::BookData,
+pub fn binary_reader<R>(
+    b_data: &mut super::BookData,
     xml_reader: &mut Reader<R>,
     buf: &mut Vec<u8>,
-    sections_counter: usize) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
+    sections_counter: usize
+) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
 
     let decoder = xml_reader.decoder();
     let mut images: HashMap<String, Image> = HashMap::new();
@@ -91,11 +93,7 @@ pub fn binary_reader<R>(b_data: &mut super::BookData,
             
             Ok(Event::Eof) => break,
             
-            Err(e) => {
-                eprintln!("FB2 parser error while reading binary: {}", e);
-                break;
-            }
-            
+            Err(e) => return Err(Box::new(e)),           
             _ => {}
         }
         

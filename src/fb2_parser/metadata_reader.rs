@@ -23,7 +23,10 @@ pub struct Metadata {
 }
 
 
-pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Result<Metadata, Box<dyn std::error::Error>> where R: BufRead {
+pub fn metadata_reader<R>(
+    xml_reader: &mut Reader<R>,
+    buf: &mut Vec<u8>
+) -> Result<Metadata, Box<dyn std::error::Error>> where R: BufRead {
     let decoder = xml_reader.decoder();
     let mut meta = Metadata {
         title: String::new(),
@@ -187,10 +190,7 @@ pub fn metadata_reader<R>(xml_reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Resu
             
             Ok(Event::Eof) => break,
             
-            Err(e) => {
-                eprintln!("FB2 parser error while reading metadata: {}", e);
-                break;
-            }
+            Err(e) => return Err(Box::new(e)),
             
             _ => {}
         }

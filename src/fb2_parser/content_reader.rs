@@ -459,10 +459,7 @@ pub fn content_reader<R>(
             
             Ok(Event::Eof) => break,
             
-            Err(e) => {
-                eprintln!("FB2 parser error while reading content: {}", e);
-                break;
-            }
+            Err(e) => return Err(Box::new(e)),
             
             _ => {}
         }

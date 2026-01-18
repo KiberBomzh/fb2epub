@@ -31,7 +31,12 @@ fn extract_books(path: &Path, temp_path: &Path) -> zip::result::ZipResult<Vec<Pa
     
 }
 
-pub fn convert_archive(path: &Path, output: &Path, styles_path: Option<&Path>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn convert_archive(
+    path: &Path,
+    output: &Path,
+    styles_path: &Option<PathBuf>,
+    suspend_error_messages: bool
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
 
@@ -41,7 +46,7 @@ pub fn convert_archive(path: &Path, output: &Path, styles_path: Option<&Path>) -
     }
 
     if files.len() == 1 {
-        return crate::run(&files[0], output, false, styles_path);
+        return crate::run(&files[0], output, false, styles_path, suspend_error_messages);
     };
 
     let mut parent = output.parent()
@@ -64,7 +69,7 @@ pub fn convert_archive(path: &Path, output: &Path, styles_path: Option<&Path>) -
                 name.to_string() + ".epub"
         } else {continue};
         let file_output = parent.join(file_name);
-        crate::run(file, &file_output, false, styles_path)?;
+        crate::run(file, &file_output, false, styles_path, suspend_error_messages)?;
     };
 
     Ok(parent)
