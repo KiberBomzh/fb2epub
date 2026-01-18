@@ -2,10 +2,10 @@ extern crate fb2epub;
 
 use std::path::{PathBuf, Path};
 use std::fs;
-use std::thread;
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+use threadpool::ThreadPool;
 
 
 
@@ -28,10 +28,6 @@ struct Args {
     #[arg(short, long)]
     recursive: bool,
 
-    /// Use a separated thread for an every book, only if input books more than one
-    #[arg(short, long)]
-    multithreading: bool,
-    
     /// DELETE inputs files after convertation.
     #[arg(long)]
     replace: bool
@@ -161,8 +157,8 @@ fn main() {
     } else {None};
     
     
-    if args.multithreading && files.len() > 1 {
-        let mut threads = Vec::new();
+    if files.len() > 1 {
+        let pool = ThreadPool::new(10);
 
         if is_windows() {
             for file in files {
@@ -170,13 +166,12 @@ fn main() {
                 else {continue};
         
                 let styles_path = styles_path.clone();
-                let t = thread::spawn(move || {
+                pool.execute(move || {
                     match fb2epub::run(&file, &output, args.replace, &styles_path, true) {
                         Ok(o) => println!("Saved to {:#?}", o),
                         Err(err) => eprintln!("{err}")
                     }
                 });
-                threads.push(t);
             }
         } else {
             let bar = ProgressBar::new(files.len().try_into().unwrap());
@@ -187,57 +182,48 @@ fn main() {
 
                 let styles_path = styles_path.clone();
                 let bar = bar.clone();
-                let t = thread::spawn(move || {
+                pool.execute(move || {
                     match fb2epub::run(&file, &output, args.replace, &styles_path, true) {
-                        Ok(o) => bar.println(format!("Saved to {:#?}", o)),
+                        Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
                         Err(err) => bar.println(format!("{}", err))
                     };
                     bar.inc(1);
                 });
-                threads.push(t);
             }
         };
 
-        for t in threads {
-            if let Err(err) = t.join() {
-                eprintln!("{:#?}", err)
-            }
-        }
+        pool.join();
     } else {
         if is_windows() {
-            for file in &files {
-                let output = if let Some(o) = get_out_name(file, output.clone()) {o}
-                else {continue};
-        
-                match fb2epub::run(file, &output, args.replace, &styles_path, true) {
-                    Ok(o) => println!("Saved to {:#?}", o),
-                    Err(err) => eprintln!("{err}")
-                }
+            let file = &files[0];
+            let output = get_out_name(file, output.clone()).unwrap();
+    
+            match fb2epub::run(file, &output, args.replace, &styles_path, true) {
+                Ok(o) => println!("Saved to {:#?}", o),
+                Err(err) => eprintln!("{err}")
             }
         } else {
-            for file in &files {
-                let output = if let Some(o) = get_out_name(file, output.clone()) {o}
-                else {continue};
+            let file = &files[0];
+            let output = get_out_name(file, output.clone()).unwrap();
 
+        
+            let file_name = if let Some(name) = file.file_name()
+                .and_then(|n| n.to_str()) {name}
+            else {"Cannot get file name"};
             
-                let file_name = if let Some(name) = file.file_name()
-                    .and_then(|n| n.to_str()) {name}
-                else {continue};
-                
-                let sp = ProgressBar::new_spinner();
-                sp.set_style(
-                    ProgressStyle::default_spinner()
-                        .template("{spinner:.green} {msg:.green}").unwrap()
-                );
-                sp.enable_steady_tick(std::time::Duration::from_millis(100));
-                sp.set_message(file_name.to_owned());
+            let sp = ProgressBar::new_spinner();
+            sp.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg:.green}").unwrap()
+            );
+            sp.enable_steady_tick(std::time::Duration::from_millis(100));
+            sp.set_message(file_name.to_owned());
+        
+            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path, true) {
+                eprintln!("{err}")
+            };
             
-                if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path, true) {
-                    eprintln!("{err}")
-                };
-                
-                sp.finish_and_clear();
-            }
+            sp.finish_and_clear();
         }
     }
 }

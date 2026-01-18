@@ -20,13 +20,14 @@ required-features = ["bin-deps"]
 
 [dependencies]
 base64 = "0.22.1"
-clap = { version = "4.5.53", features = ["derive"], optional = true }
 epub-builder = "0.8.2"
-indicatif = { version = "0.18.3", optional = true }
 quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24.0"
 zip = "7.0.0"
+clap = { version = "4.5.53", features = ["derive"], optional = true }
+indicatif = { version = "0.18.3", optional = true }
+threadpool = { version = "1.8.1", optional = true }
 
 [features]
 default = []
-bin-deps = ["dep:clap", "dep:indicatif"]
+bin-deps = ["dep:clap", "dep:indicatif", "dep:threadpool"]
