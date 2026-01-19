@@ -22,27 +22,12 @@ fn unwrap_title(title: &Vec<Paragraph>) -> String {
         return String::new()
     };
     
-    let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
-    let start_bracets = ['«', '(', '{', '['];
-                
     
     let mut result = String::new();
     for p in title {
         let text = &if let Paragraph::Text(blocks) = p {
             let mut s = String::new();
-            for (index, block) in blocks.into_iter().enumerate() {
-                if block == &blocks[0] {
-                    s.push_str(&block.text);
-                    continue
-                };
-                
-                
-                if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
-                    if !start_bracets.iter().any(|c| blocks[index - 1].text.ends_with(*c)) {
-                        s.push(' ')
-                    }
-                };
-                
+            for block in blocks {
                 s.push_str(&block.text);
             };
             
@@ -96,14 +81,7 @@ pub fn create_epub(
             let mut description = String::new();
             for (i, p) in annotation.into_iter().enumerate() {
                 if i != 0 {
-                    let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
-                    let start_bracets = ['«', '(', '{', '['];
-                    
-                    if !punctuation_chars.iter().any(|c| p.starts_with(*c)) {
-                        if !start_bracets.iter().any(|c| annotation[i - 1].ends_with(*c)) {
-                            description.push('\n')
-                        }
-                    }
+                    description.push('\n')
                 };
                 
                 description.push_str(p);

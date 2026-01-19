@@ -113,7 +113,7 @@ fn push_style_tags(s: &mut String, block: &TextBlock, end_tag: bool) {
     }
 }
 
-fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> (String, bool) {
+fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> String {
     let mut is_note = false;
     let href = if link.link.starts_with("#") {
         if let Some(l) = link_map.get(&link.link) {
@@ -125,7 +125,7 @@ fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> (String, b
         } else {&link.link}
     } else {&link.link};
 
-    let link_start = match &link.link_type {
+    return match &link.link_type {
         Some(t) if t == "note" => {
             format!("<a class=\"reference\" epub:type=\"noteref\" href=\"{href}\" id=\"{}\">", &link.link[1..])
         },
@@ -135,9 +135,7 @@ fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> (String, b
         } else {
             format!("<a href=\"{href}\">")
         }
-    };
-    
-    return (link_start, is_note)
+    }
 }
 
 fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map: &HashMap<String, String>) -> String {
@@ -152,30 +150,17 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
         _ => "<p>"
     });
     
-    for (index, block) in blocks.into_iter().enumerate() {
+    for block in blocks {
         let mut left_part = String::new();
         let mut right_part = String::new();
-        let mut is_note = false;
         
         push_style_tags(&mut right_part, &block, true);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
-            let link_start: String;
-            (link_start, is_note) = get_link_start(&link, link_map);
+            let link_start = get_link_start(&link, link_map);
             left_part.push_str(&link_start);
         };
         push_style_tags(&mut left_part, &block, false);
-        
-        if index != 0 && !is_note {
-            let punctuation_chars = ['.', ',', '!', '?', '-', ';', ':', '}', ']', ')', '»'];
-            let start_bracets = ['«', '(', '{', '['];
-            
-            if !punctuation_chars.iter().any(|c| block.text.starts_with(*c)) {
-                if !start_bracets.iter().any(|c| blocks[index - 1].text.ends_with(*c)) {
-                    s.push(' ')
-                }
-            }
-        }
         
         if !left_part.is_empty() {
             s.push_str(&left_part);

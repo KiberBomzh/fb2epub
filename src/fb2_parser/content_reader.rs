@@ -417,10 +417,9 @@ pub fn content_reader<R>(
                     .into_owned();
                 
                 if !text.trim().is_empty() {
-                    let t_trimmed = text.trim().to_string();
                     if in_date {
                         date.push(TextBlock {
-                            text: t_trimmed,
+                            text: text,
                             strong,
                             emphasis,
                             strikethrough,
@@ -432,7 +431,7 @@ pub fn content_reader<R>(
                         link = None;
                     } else if in_p || in_v || in_text_author || in_subtitle || in_title {
                         paragraph.push(TextBlock {
-                            text: t_trimmed,
+                            text: text,
                             strong,
                             emphasis,
                             strikethrough,
