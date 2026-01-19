@@ -173,7 +173,11 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
             if block.text.ends_with(" ") && block != &blocks[blocks.len() - 1]
             { s.push(' ') }
         } else {
-            s.push_str(block.text.trim())
+            if block.text.starts_with(" ") && block != &blocks[0]
+            { s.push(' ') }
+            s.push_str(block.text.trim());
+            if block.text.ends_with(" ") && block != &blocks[blocks.len() - 1]
+            { s.push(' ') }
         }
     }
     
