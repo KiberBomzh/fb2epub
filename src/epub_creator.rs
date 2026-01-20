@@ -43,7 +43,7 @@ fn unwrap_title(title: &Vec<Paragraph>) -> String {
         result.push_str(text)
     };
     
-    return result
+    return result.trim().to_string()
 }
 
 fn get_css() -> String {

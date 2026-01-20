@@ -63,25 +63,30 @@ fn unwrap_title(level: u8, title: &Vec<Paragraph>, indent: usize, link_map: &Has
     }
 }
 
-fn push_style_tags(s: &mut String, block: &TextBlock, end_tag: bool) {
+fn push_style_tags(
+    s: &mut String,
+    block: &TextBlock,
+    end_tag: bool,
+    styles_ignore: &Vec<char>
+) {
     let mut tags: Vec<char> = Vec::new();
     
-    if block.strong {
+    if block.strong && !styles_ignore.iter().any(|i| *i == 'b') {
         tags.push('b')
     }
-    if block.emphasis {
+    if block.emphasis && !styles_ignore.iter().any(|i| *i == 'i') {
         tags.push('i')
     }
-    if block.strikethrough {
+    if block.strikethrough && !styles_ignore.iter().any(|i| *i == 's') {
         tags.push('s')
     }
-    if block.code {
+    if block.code && !styles_ignore.iter().any(|i| *i == 'c') {
         tags.push('c')
     }
-    if block.sup {
+    if block.sup && !styles_ignore.iter().any(|i| *i == 'u') {
         tags.push('u') // от слова upper
     }
-    if block.sub {
+    if block.sub && !styles_ignore.iter().any(|i| *i == 'l') {
         tags.push('l') // от слова lower
     }
     
@@ -150,37 +155,61 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
         _ => "<p>"
     });
     
+    let p_styles = TextBlock {
+        text: String::new(),
+        strong: blocks.iter().all(|b| b.strong),
+        emphasis: blocks.iter().all(|b| b.emphasis),
+        strikethrough: blocks.iter().all(|b| b.strikethrough),
+        code: blocks.iter().all(|b| b.code),
+        sup: blocks.iter().all(|b| b.sup),
+        sub: blocks.iter().all(|b| b.sub),
+        link: None
+    };
+    let mut styles_ignore: Vec<char> = Vec::new();
+    if p_styles.strong { styles_ignore.push('b') }
+    if p_styles.emphasis { styles_ignore.push('i') }
+    if p_styles.strikethrough { styles_ignore.push('s') }
+    if p_styles.code { styles_ignore.push('c') }
+    if p_styles.sup { styles_ignore.push('u') }
+    if p_styles.sub { styles_ignore.push('l') }
+
+    let mut end = String::new();
+    push_style_tags(&mut s, &p_styles, false, &Vec::new());
+    push_style_tags(&mut end, &p_styles, true, &Vec::new());
+
+
     for block in blocks {
         let mut left_part = String::new();
         let mut right_part = String::new();
         
-        push_style_tags(&mut right_part, &block, true);
+        push_style_tags(&mut right_part, &block, true, &styles_ignore);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
             let link_start = get_link_start(&link, link_map);
             left_part.push_str(&link_start);
         };
-        push_style_tags(&mut left_part, &block, false);
+        push_style_tags(&mut left_part, &block, false, &styles_ignore);
         
         if !left_part.is_empty() {
-            if block.text.starts_with(" ") && block != &blocks[0]
+            if block.text.starts_with(" ") && *block != blocks[0]
             { s.push(' ') }
             s.push_str(&left_part);
             
             s.push_str(block.text.trim());
             
             s.push_str(&right_part);
-            if block.text.ends_with(" ") && block != &blocks[blocks.len() - 1]
+            if block.text.ends_with(" ") && *block != blocks[blocks.len() - 1]
             { s.push(' ') }
         } else {
-            if block.text.starts_with(" ") && block != &blocks[0]
+            if block.text.starts_with(" ") && *block != blocks[0]
             { s.push(' ') }
             s.push_str(block.text.trim());
-            if block.text.ends_with(" ") && block != &blocks[blocks.len() - 1]
+            if block.text.ends_with(" ") && *block != blocks[blocks.len() - 1]
             { s.push(' ') }
         }
     }
     
+    s.push_str(&end);
     if block_type == "subtitle" {
         s.push_str("</subtitle>\n")
     } else {
