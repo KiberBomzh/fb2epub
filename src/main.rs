@@ -30,7 +30,28 @@ struct Args {
 
     /// DELETE inputs files after convertation.
     #[arg(long)]
-    replace: bool
+    replace: bool,
+
+
+    /// Use given title for input book(s)
+    #[arg(long)]
+    title: Option<String>,
+
+    /// Use given author(s) for input book(s)
+    #[arg(long, num_args = 1..)]
+    author: Option<Vec<String>>,
+
+    /// Use given language for input book(s)
+    #[arg(long)]
+    language: Option<String>,
+
+    /// Use given series for input book(s)
+    #[arg(long)]
+    series: Option<String>,
+
+    /// Use given series index for input book(s)
+    #[arg(long)]
+    series_index: Option<String>
 }
 
 
@@ -124,6 +145,25 @@ fn get_out_name(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
     }
 }
 
+fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
+    let metadata = fb2epub::Metadata {
+        title: args.title.clone(),
+        authors: args.author.clone(),
+        language: args.language.clone(),
+        series: args.series.clone(),
+        series_index: args.series_index.clone(),
+        description: None
+    };
+
+    if metadata.title == None &&
+        metadata.authors == None &&
+        metadata.language == None &&
+        metadata.series == None &&
+        metadata.series_index == None &&
+        metadata.description == None { None }
+    else { Some(metadata) }
+}
+
 
 fn main() {
     let args = Args::parse();
@@ -133,7 +173,7 @@ fn main() {
     };
     
     let output = match args.output {
-        Some(o) => {
+        Some(ref o) => {
             let output_path = PathBuf::from(o);
             if files.len() > 1 {
                 if output_path.is_dir() {
@@ -150,12 +190,14 @@ fn main() {
         None => None
     };
     
-    let styles_path: Option<PathBuf> = if let Some(styles) = args.styles {
+    let styles_path: Option<PathBuf> = if let Some(ref styles) = args.styles {
         let s_path = PathBuf::from(styles);
         if s_path.is_file() {Some(s_path)}
         else {None}
     } else {None};
-    
+
+    let metadata = parse_meta_from_args(&args);
+
     
     if files.len() > 1 {
         let pool = ThreadPool::new(10);
@@ -166,8 +208,16 @@ fn main() {
                 else {continue};
         
                 let styles_path = styles_path.clone();
+                let metadata = metadata.clone();
                 pool.execute(move || {
-                    match fb2epub::run(&file, &output, args.replace, &styles_path, true) {
+                    match fb2epub::run(
+                        &file,
+                        &output,
+                        args.replace,
+                        &styles_path,
+                        metadata,
+                        true
+                    ) {
                         Ok(o) => println!("Saved to {:#?}", o),
                         Err(err) => eprintln!("{err}")
                     }
@@ -181,9 +231,17 @@ fn main() {
                 else {continue};
 
                 let styles_path = styles_path.clone();
+                let metadata = metadata.clone();
                 let bar = bar.clone();
                 pool.execute(move || {
-                    match fb2epub::run(&file, &output, args.replace, &styles_path, true) {
+                    match fb2epub::run(
+                        &file,
+                        &output,
+                        args.replace,
+                        &styles_path,
+                        metadata,
+                        true
+                    ) {
                         Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
                         Err(err) => bar.println(format!("{}", err))
                     };
@@ -198,7 +256,14 @@ fn main() {
             let file = &files[0];
             let output = get_out_name(file, output.clone()).unwrap();
     
-            match fb2epub::run(file, &output, args.replace, &styles_path, true) {
+            match fb2epub::run(
+                file,
+                &output,
+                args.replace,
+                &styles_path,
+                metadata,
+                true
+            ) {
                 Ok(o) => println!("Saved to {:#?}", o),
                 Err(err) => eprintln!("{err}")
             }
@@ -219,7 +284,14 @@ fn main() {
             sp.enable_steady_tick(std::time::Duration::from_millis(100));
             sp.set_message(file_name.to_owned());
         
-            if let Err(err) = fb2epub::run(file, &output, args.replace, &styles_path, true) {
+            if let Err(err) = fb2epub::run(
+                file,
+                &output,
+                args.replace,
+                &styles_path,
+                metadata,
+                true
+            ) {
                 eprintln!("{err}")
             };
             

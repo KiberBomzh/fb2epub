@@ -35,6 +35,7 @@ pub fn convert_archive(
     path: &Path,
     output: &Path,
     styles_path: &Option<PathBuf>,
+    metadata: Option<crate::Metadata>,
     suspend_error_messages: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
@@ -46,7 +47,14 @@ pub fn convert_archive(
     }
 
     if files.len() == 1 {
-        return crate::run(&files[0], output, false, styles_path, suspend_error_messages);
+        return crate::run(
+            &files[0],
+            output,
+            false,
+            styles_path,
+            metadata,
+            suspend_error_messages
+        );
     };
 
     let mut parent = output.parent()
@@ -69,7 +77,14 @@ pub fn convert_archive(
                 name.to_string() + ".epub"
         } else {continue};
         let file_output = parent.join(file_name);
-        crate::run(file, &file_output, false, styles_path, suspend_error_messages)?;
+        crate::run(
+            file,
+            &file_output,
+            false,
+            styles_path,
+            metadata.clone(),
+            suspend_error_messages
+        )?;
     };
 
     Ok(parent)
