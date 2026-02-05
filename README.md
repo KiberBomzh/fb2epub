@@ -34,15 +34,15 @@ fn main() {
     // dont show small errors (image decoder errors, etc)
     let suspend_error_messages = false;
     
-    // path to css styles Option<PathBuf>, if None will be used default styles
-    let styles = None;
+    // path to css styles Option<&Path>, if None will be used default styles
+    let styles = Some(PathBuf::from("some/styles.css"));
     
     
     fb2epub::run(
         &input_book,
         &output_book,
         replace,
-        &styles,
+        styles.as_deref(),
         suspend_error_messages
     ).unwrap(); // returns Result<PathBuf>
     // PathBuf is path to output book
@@ -55,7 +55,7 @@ fn main() {
         &input_archive,
         &output_archive,
         replace,
-        &styles,
+        styles.as_deref(),
         suspend_error_messages
     ).unwrap();
     
@@ -70,7 +70,7 @@ fn main() {
         &zip_with_many_books,
         &output_dir,
         replace,
-        &styles,
+        styles.as_deref(),
         suspend_error_messages
     ).unwrap();
 }

@@ -79,7 +79,7 @@ pub fn run(
     book: &Path, 
     output: &Path, 
     replace: bool, 
-    styles_path: &Option<PathBuf>,
+    styles_path: Option<&Path>,
     metadata: Option<Metadata>,
     suspend_error_messages: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {

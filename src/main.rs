@@ -214,7 +214,7 @@ fn main() {
                         &file,
                         &output,
                         args.replace,
-                        &styles_path,
+                        styles_path.as_deref(),
                         metadata,
                         true
                     ) {
@@ -238,7 +238,7 @@ fn main() {
                         &file,
                         &output,
                         args.replace,
-                        &styles_path,
+                        styles_path.as_deref(),
                         metadata,
                         true
                     ) {
@@ -260,7 +260,7 @@ fn main() {
                 file,
                 &output,
                 args.replace,
-                &styles_path,
+                styles_path.as_deref(),
                 metadata,
                 true
             ) {
@@ -288,7 +288,7 @@ fn main() {
                 file,
                 &output,
                 args.replace,
-                &styles_path,
+                styles_path.as_deref(),
                 metadata,
                 true
             ) {

@@ -34,7 +34,7 @@ fn extract_books(path: &Path, temp_path: &Path) -> zip::result::ZipResult<Vec<Pa
 pub fn convert_archive(
     path: &Path,
     output: &Path,
-    styles_path: &Option<PathBuf>,
+    styles_path: Option<&Path>,
     metadata: Option<crate::Metadata>,
     suspend_error_messages: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {

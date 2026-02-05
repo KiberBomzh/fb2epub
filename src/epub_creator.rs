@@ -57,7 +57,7 @@ fn get_css_from_file(s_path: &Path) -> std::io::Result<Vec<u8>> {
 pub fn create_epub(
     data: &mut fb2_parser::BookData,
     output: &Path,
-    styles_path: &Option<PathBuf>,
+    styles_path: Option<&Path>,
     suspend_error_messages: bool
 ) -> Result<PathBuf> {
     let mut builder = EpubBuilder::new(ZipLibrary::new()?)?;
