@@ -189,24 +189,10 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
             left_part.push_str(&link_start);
         };
         push_style_tags(&mut left_part, &block, false, &styles_ignore);
-        
-        if !left_part.is_empty() {
-            if block.text.starts_with(" ") && *block != blocks[0]
-            { s.push(' ') }
-            s.push_str(&left_part);
-            
-            s.push_str(block.text.trim());
-            
-            s.push_str(&right_part);
-            if block.text.ends_with(" ") && *block != blocks[blocks.len() - 1]
-            { s.push(' ') }
-        } else {
-            if block.text.starts_with(" ") && *block != blocks[0]
-            { s.push(' ') }
-            s.push_str(block.text.trim());
-            if block.text.ends_with(" ") && *block != blocks[blocks.len() - 1]
-            { s.push(' ') }
-        }
+
+        s.push_str(&left_part);
+        s.push_str(&block.text);
+        s.push_str(&right_part);
     }
     
     s.push_str(&end);
