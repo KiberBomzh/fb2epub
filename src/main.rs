@@ -32,6 +32,10 @@ struct Args {
     #[arg(long)]
     replace: bool,
 
+    /// Use debug mod
+    #[arg(long)]
+    debug: bool,
+
 
     /// Use given title for input book(s)
     #[arg(long)]
@@ -202,7 +206,7 @@ fn main() {
     if files.len() > 1 {
         let pool = ThreadPool::new(10);
 
-        if is_windows() {
+        if is_windows() || args.debug {
             for file in files {
                 let output = if let Some(o) = get_out_name(&file, output.clone()) {o}
                 else {continue};
@@ -216,7 +220,8 @@ fn main() {
                         args.replace,
                         styles_path.as_deref(),
                         metadata,
-                        true
+                        true,
+                        args.debug
                     ) {
                         Ok(o) => println!("Saved to {:#?}", o),
                         Err(err) => eprintln!("{err}")
@@ -240,7 +245,8 @@ fn main() {
                         args.replace,
                         styles_path.as_deref(),
                         metadata,
-                        true
+                        true,
+                        args.debug
                     ) {
                         Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
                         Err(err) => bar.println(format!("{}", err))
@@ -252,7 +258,7 @@ fn main() {
 
         pool.join();
     } else {
-        if is_windows() {
+        if is_windows() || args.debug {
             let file = &files[0];
             let output = get_out_name(file, output.clone()).unwrap();
     
@@ -262,7 +268,8 @@ fn main() {
                 args.replace,
                 styles_path.as_deref(),
                 metadata,
-                true
+                true,
+                args.debug
             ) {
                 Ok(o) => println!("Saved to {:#?}", o),
                 Err(err) => eprintln!("{err}")
@@ -290,7 +297,8 @@ fn main() {
                 args.replace,
                 styles_path.as_deref(),
                 metadata,
-                true
+                true,
+                args.debug
             ) {
                 eprintln!("{err}")
             };

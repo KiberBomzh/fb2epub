@@ -36,7 +36,8 @@ pub fn convert_archive(
     output: &Path,
     styles_path: Option<&Path>,
     metadata: Option<crate::Metadata>,
-    suspend_error_messages: bool
+    suspend_error_messages: bool,
+    debug: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
@@ -53,7 +54,8 @@ pub fn convert_archive(
             false,
             styles_path,
             metadata,
-            suspend_error_messages
+            suspend_error_messages,
+            debug
         );
     };
 
@@ -83,7 +85,8 @@ pub fn convert_archive(
             false,
             styles_path,
             metadata.clone(),
-            suspend_error_messages
+            suspend_error_messages,
+            debug
         )?;
     };
 

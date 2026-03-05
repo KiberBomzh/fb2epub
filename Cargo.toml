@@ -1,6 +1,6 @@
 [package]
 name = "fb2epub"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 description = "Converter from fb2 to epub"
 license = "MIT"

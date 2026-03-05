@@ -19,7 +19,6 @@ pub struct Metadata {
     pub description: Option<Vec<String>>
 }
 
-/*
 // Функция для вывода секций, удобно для дебага
 fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
     let mut s = String::new();
@@ -46,7 +45,7 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
         };
     };
 }
-*/
+
 
 fn get_free_output(output: &Path) -> Option<PathBuf> {
     let mut file_name = output.file_stem()?.to_str()?;
@@ -81,7 +80,8 @@ pub fn run(
     replace: bool, 
     styles_path: Option<&Path>,
     metadata: Option<Metadata>,
-    suspend_error_messages: bool
+    suspend_error_messages: bool,
+    debug: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
@@ -90,7 +90,8 @@ pub fn run(
             output,
             styles_path,
             metadata,
-            suspend_error_messages
+            suspend_error_messages,
+            debug
         ) {
             Ok(o) if replace => {
                 fs::remove_file(book)?;
@@ -103,7 +104,9 @@ pub fn run(
 
     // Чтение входного FB2
     let mut data = fb2_parser::get_data(book)?;
-    // print_sections(&data.content, true);
+    if debug {
+        print_sections(&data.content, false);
+    }
     
     
     // Проверка имени файла

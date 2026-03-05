@@ -38,6 +38,9 @@ fn main() {
     
     // dont show small errors (image decoder errors, etc)
     let suspend_error_messages = false;
+
+    // use debug mode
+    let debug = false;
     
     // path to css styles Option<&Path>, if None will be used default styles
     let styles = Some(PathBuf::from("some/styles.css"));
@@ -48,7 +51,8 @@ fn main() {
         &output_book,
         replace,
         styles.as_deref(),
-        suspend_error_messages
+        suspend_error_messages,
+        debug
     ).unwrap(); // returns Result<PathBuf>
     // PathBuf is path to output book
     
@@ -61,7 +65,8 @@ fn main() {
         &output_archive,
         replace,
         styles.as_deref(),
-        suspend_error_messages
+        suspend_error_messages,
+        debug
     ).unwrap();
     
     
@@ -76,7 +81,8 @@ fn main() {
         &output_dir,
         replace,
         styles.as_deref(),
-        suspend_error_messages
+        suspend_error_messages,
+        debug
     ).unwrap();
 }
 ```
