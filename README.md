@@ -11,8 +11,13 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 - `-o`, `--output` `path` - output path. If input is one book - can be directory or file name, else - only directory
 - `--styles` `path/to/file.css` - use custom css styles
 - `-r`, `--recursive` - search books as well in subdirectories 
-- `-m`, `--multithreading` - use multithreading (useful if you need to convert many books)
 - `--replace` - **REMOVE** input files
+### Flags for metadata
+- `--title` - set title for output book
+- `--author` - set authors for output book
+- `--language` - set language for output book
+- `--series` - set series for output book
+- `--series-index` - set series index for output book
 
 ## Usage as library
 Add to your project with:
