@@ -1,5 +1,7 @@
 mod fb2_parser;
 mod epub_creator;
+
+#[cfg(feature = "zip")]
 mod zip_reader;
 
 use std::path::{PathBuf, Path};
@@ -84,6 +86,7 @@ pub fn run(
     debug: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
+    #[cfg(feature = "zip")]
     if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
         match crate::zip_reader::convert_archive(
             book,

@@ -58,6 +58,16 @@ struct Args {
     series_index: Option<String>
 }
 
+#[cfg(feature = "zip")]
+const ALLOWED_EXTENSIONS: [&str; 2] = [
+    "fb2",
+    "zip"
+];
+#[cfg(not(feature = "zip"))]
+const ALLOWED_EXTENSIONS: [&str; 1] = [
+    "fb2",
+];
+
 
 #[cfg(target_os = "windows")]
 fn is_windows() -> bool {true}
@@ -77,7 +87,7 @@ fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::R
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if let Some(ext) = extension.to_str() {
-                    if ext.to_lowercase() == "fb2" || ext.to_lowercase() == "zip" {
+                    if ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
                         if !files.contains(&path) {files.push(path)}
                     }
                 }
@@ -109,7 +119,7 @@ fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if let Some(ext) = extension.to_str() {
-                    if ext.to_lowercase() == "fb2" || ext.to_lowercase() == "zip" {
+                    if ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
                         if !files.contains(&path) {files.push(path)}
                     }
                 }
