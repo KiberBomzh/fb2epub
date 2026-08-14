@@ -1,11 +1,13 @@
-extern crate fb2epub;
-
 use std::path::{PathBuf, Path};
 use std::fs;
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use threadpool::ThreadPool;
+
+
+#[cfg(feature = "zip")]
+mod zip_reader;
 
 
 
@@ -124,7 +126,7 @@ fn main() {
                 let styles_path = styles_path.clone();
                 let metadata = metadata.clone();
                 pool.execute(move || {
-                    match fb2epub::run(
+                    match run(
                         &file,
                         &output,
                         args.replace,
@@ -149,7 +151,7 @@ fn main() {
                 let metadata = metadata.clone();
                 let bar = bar.clone();
                 pool.execute(move || {
-                    match fb2epub::run(
+                    match run(
                         &file,
                         &output,
                         args.replace,
@@ -173,7 +175,7 @@ fn main() {
             let output = get_out_path(file, output.clone())
                 .expect("Cannot get output path!");
     
-            match fb2epub::run(
+            match run(
                 file,
                 &output,
                 args.replace,
@@ -203,7 +205,7 @@ fn main() {
             sp.enable_steady_tick(std::time::Duration::from_millis(100));
             sp.set_message(file_name.to_owned());
         
-            if let Err(err) = fb2epub::run(
+            if let Err(err) = run(
                 file,
                 &output,
                 args.replace,
@@ -217,6 +219,54 @@ fn main() {
             
             sp.finish_and_clear();
         }
+    }
+}
+
+fn run(
+    book: &Path, 
+    output: &Path, 
+    replace: bool, 
+    styles_path: Option<&Path>,
+    metadata: Option<fb2epub::Metadata>,
+    suspend_error_messages: bool,
+    debug: bool
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    #[cfg(feature = "zip")]
+    if book.extension().is_some_and(|s| s.to_string_lossy().to_lowercase().as_str() == "zip") {
+        match crate::zip_reader::convert_archive(
+            book,
+            output,
+            styles_path,
+            metadata,
+            suspend_error_messages,
+            debug
+        ) {
+            Ok(o) if replace => {
+                fs::remove_file(book)?;
+                return Ok(o)
+            },
+            Ok(o) => return Ok(o),
+            Err(err) => return Err(err)
+        }
+    };
+
+
+    let file = fs::File::open(book)?;
+    let reader = std::io::BufReader::new(file);
+    match fb2epub::convert(
+        reader,
+        output,
+        styles_path,
+        metadata,
+        suspend_error_messages,
+        debug
+    ) {
+        Ok(o) if replace => {
+            fs::remove_file(book)?;
+
+            Ok(o)
+        },
+        err => err,
     }
 }
 

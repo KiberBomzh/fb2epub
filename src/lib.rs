@@ -1,11 +1,9 @@
 mod fb2_parser;
 mod epub_creator;
 
-#[cfg(feature = "zip")]
-mod zip_reader;
 
 use std::path::{PathBuf, Path};
-use std::fs;
+use std::io::{Read, BufReader};
 
 use crate::fb2_parser::metadata_reader::Sequence;
 
@@ -54,38 +52,16 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 /// If replace = true input fb2 book will be deleted.
 ///
 /// styles_path is path to custom stylesheet, for default styles use None.
-pub fn run(
-    book: &Path, 
+pub fn convert<R: Read>(
+    reader: BufReader<R>, 
     output: &Path, 
-    replace: bool, 
     styles_path: Option<&Path>,
     metadata: Option<Metadata>,
     suspend_error_messages: bool,
     debug: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-
-    #[cfg(feature = "zip")]
-    if book.extension().is_some_and(|s| s.to_string_lossy().to_lowercase().as_str() == "zip") {
-        match crate::zip_reader::convert_archive(
-            book,
-            output,
-            styles_path,
-            metadata,
-            suspend_error_messages,
-            debug
-        ) {
-            Ok(o) if replace => {
-                fs::remove_file(book)?;
-                return Ok(o)
-            },
-            Ok(o) => return Ok(o),
-            Err(err) => return Err(err)
-        }
-    };
-
     // Чтение входного FB2
-    let file = fs::File::open(book)?;
-    let mut data = fb2_parser::parse(std::io::BufReader::new(file))?;
+    let mut data = fb2_parser::parse(reader)?;
     if debug {
         print_sections(&data.content, false);
     }
@@ -128,11 +104,6 @@ pub fn run(
     
     // Создание EPUB
     match epub_creator::create_epub(&mut data, output, styles_path, suspend_error_messages) {
-        Ok(o) if replace => {
-            fs::remove_file(book)?;
-
-            Ok(o)
-        },
         Ok(o) => Ok(o),
         Err(err) => Err(format!("Error while creating Epub: {}!", err).into())
     }

@@ -35,7 +35,7 @@ pub fn convert_archive(
     path: &Path,
     output: &Path,
     styles_path: Option<&Path>,
-    metadata: Option<crate::Metadata>,
+    metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
     debug: bool
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
