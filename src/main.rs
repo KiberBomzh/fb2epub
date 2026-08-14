@@ -191,9 +191,9 @@ fn main() {
                 .expect("Cannot get output path!");
 
         
-            let file_name = if let Some(name) = file.file_name()
-                .and_then(|n| n.to_str()) {name}
-            else {"Cannot get file name"};
+            let file_name = file.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Cannot get file name!");
             
             let sp = ProgressBar::new_spinner();
             sp.set_style(
@@ -230,12 +230,13 @@ fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
         description: None
     };
 
-    if metadata.title == None &&
-        metadata.authors == None &&
-        metadata.language == None &&
-        metadata.series == None &&
-        metadata.series_index == None &&
-        metadata.description == None { None }
+    if metadata.title.is_none() &&
+        metadata.authors.is_none() &&
+        metadata.language.is_none() &&
+        metadata.series.is_none() &&
+        metadata.series_index.is_none() &&
+        metadata.description.is_none() 
+    { None }
     else { Some(metadata) }
 }
 
@@ -287,7 +288,7 @@ fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
         }
     }
     
-    return files
+    files
 }
 
 fn get_out_path(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
