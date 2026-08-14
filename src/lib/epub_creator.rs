@@ -48,7 +48,7 @@ fn unwrap_title(title: &Vec<Paragraph>) -> String {
 }
 
 fn get_css() -> String {
-    include_str!("../assets/stylesheet.css").to_string()
+    include_str!("../../assets/stylesheet.css").to_string()
 }
 
 fn get_css_from_file(s_path: &Path) -> std::io::Result<Vec<u8>> {

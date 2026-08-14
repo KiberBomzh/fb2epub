@@ -11,7 +11,7 @@ keywords = ["fb2", "epub", "cli", "converter"]
 
 [lib]
 name = "fb2epub"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
 
 [[bin]]
 name = "fb2epub"
