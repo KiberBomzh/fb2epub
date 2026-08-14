@@ -43,7 +43,8 @@ fn unwrap_title(title: &Vec<Paragraph>) -> String {
         result.push_str(text)
     };
     
-    return result.trim().to_string()
+
+    result.trim().to_string()
 }
 
 fn get_css() -> String {
@@ -79,7 +80,7 @@ pub fn create_epub(
         
         if let Some(annotation) = &metadata.annotation {
             let mut description = String::new();
-            for (i, p) in annotation.into_iter().enumerate() {
+            for (i, p) in annotation.iter().enumerate() {
                 if i != 0 {
                     description.push('\n')
                 };
@@ -129,27 +130,25 @@ pub fn create_epub(
             };
         };
         
-        if let Some(k) = cover_key {
-            if let Some(img) = &data.images.get(k) {
-                let cover_name =  match &img.content_type[..] {
-                    "image/png" => format!("images/cover.png"),
-                    "image/jpeg" => format!("images/cover.jpg"),
-                    "image/jpg" => format!("images/cover.jpg"),
-                    _ => "".to_string()
-                };
+        if let Some(k) = cover_key && let Some(img) = &data.images.get(k) {
+            let cover_name =  match &img.content_type[..] {
+                "image/png" => "images/cover.png",
+                "image/jpeg" => "images/cover.jpg",
+                "image/jpg" => "images/cover.jpg",
+                _ => ""
+            }.to_string();
 
-                if !cover_name.is_empty() {
-                    match general_purpose::STANDARD.decode(&img.binary) {
-                        Ok(b) => {
-                            builder.add_cover_image(
-                                cover_name,
-                                &b[..],
-                                img.content_type.clone()
-                            )?;
-                        },
-                        Err(err) => if !suspend_error_messages {
-                            eprintln!("Image decoder error: {}", err)
-                        }
+            if !cover_name.is_empty() {
+                match general_purpose::STANDARD.decode(&img.binary) {
+                    Ok(b) => {
+                        builder.add_cover_image(
+                            cover_name,
+                            &b[..],
+                            img.content_type.clone()
+                        )?;
+                    },
+                    Err(err) => if !suspend_error_messages {
+                        eprintln!("Image decoder error: {}", err)
                     }
                 }
             }
@@ -160,16 +159,13 @@ pub fn create_epub(
     // Добавление картинок
     {let mut counter = 1;
     for (key, image) in &data.images {
-        if let Some(k) = cover_key {
-             if k == key { continue }
-        };
+        if let Some(k) = cover_key && k == key { continue }
         let counter_str = get_counter_str(counter);
         
-        let img_name: String;
-        match &image.content_type[..] {
-            "image/png" => img_name = format!("images/{}.png", counter_str),
-            "image/jpeg" => img_name = format!("images/{}.jpg", counter_str),
-            "image/jpg" => img_name = format!("images/{}.jpg", counter_str),
+        let img_name = match &image.content_type[..] {
+            "image/png" => format!("images/{}.png", counter_str),
+            "image/jpeg" => format!("images/{}.jpg", counter_str),
+            "image/jpg" => format!("images/{}.jpg", counter_str),
             _ => continue
         };
         
@@ -197,6 +193,7 @@ pub fn create_epub(
     
     // Добавление текстовых документов
     let mut counter = 1;
+    #[allow(clippy::explicit_counter_loop)]
     for section in &data.content {
         let prefix = "text/".to_string();
         let suffix = ".xhtml";
@@ -206,7 +203,7 @@ pub fn create_epub(
         
         let title = unwrap_title(&section.title);
         let level: i32 = (section.level + 1).into();
-        let html_content = html_builder(&section, &data.link_map, &title);
+        let html_content = html_builder(section, &data.link_map, &title);
         if title.is_empty() {
             builder.add_content(EpubContent::new(prefix + &file_name + suffix, html_content.as_bytes()))?;
         } else {

@@ -52,10 +52,9 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 fn get_free_output(output: &Path) -> Option<PathBuf> {
     let mut file_name = output.file_stem()?.to_str()?;
     
-    if file_name.ends_with(".fb2") {
-        if let Some(r_index) = file_name.rfind(".") {
-            file_name = &file_name[..r_index]
-        }
+    if file_name.ends_with(".fb2")
+    && let Some(r_index) = file_name.rfind(".") {
+        file_name = &file_name[..r_index]
     };
     
     let parent = output.parent()?;
@@ -67,7 +66,8 @@ fn get_free_output(output: &Path) -> Option<PathBuf> {
         counter += 1;
     };
     
-    return Some(free_output.to_owned())
+
+    Some(free_output.to_owned())
 }
 
 
@@ -113,10 +113,8 @@ pub fn run(
     
     
     // Проверка имени файла
-    if let Some(p) = output.parent() {
-        if !p.exists() {
-            fs::create_dir_all(p)?
-        }
+    if let Some(p) = output.parent() && !p.exists() {
+        fs::create_dir_all(p)?
     };
     
     let output =  &if let Some(o) = get_free_output(output) {o}
@@ -159,12 +157,13 @@ pub fn run(
     };
     
     // Создание EPUB
-    match epub_creator::create_epub(&mut data, &output, styles_path, suspend_error_messages) {
+    match epub_creator::create_epub(&mut data, output, styles_path, suspend_error_messages) {
         Ok(o) if replace => {
             fs::remove_file(book)?;
-            return Ok(o)
+
+            Ok(o)
         },
-        Ok(o) => return Ok(o),
+        Ok(o) => Ok(o),
         Err(err) => Err(format!("Error while creating Epub: {}!", err).into())
     }
 }

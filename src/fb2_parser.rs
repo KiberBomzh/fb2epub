@@ -40,20 +40,19 @@ pub struct Image {
 
 
 fn get_href(e: &BytesStart, decoder: Decoder) -> Option<String> {
-    for attr_result in e.attributes() {
-        if let Ok(attr) = attr_result {
-            let key = String::from_utf8_lossy(attr.key.as_ref());
-            if key.contains("href") {
-                return match attr.decode_and_unescape_value(decoder)
-                    .and_then(|s| Ok(s.to_string())).unwrap_or(String::new()) {
-                        s if s.is_empty() => None,
-                        s => Some(s)
-                    }
-            } else { continue }
+    for attr in e.attributes().flatten() {
+        let key = String::from_utf8_lossy(attr.key.as_ref());
+        if key.contains("href") {
+            return match attr.decode_and_unescape_value(decoder)
+                .map(|s| s.to_string()).unwrap_or(String::new()) {
+                    s if s.is_empty() => None,
+                    s => Some(s)
+                }
         }
     };
 
-    return None
+
+    None
 }
 
 fn get_attr(e: &BytesStart, query: &str, decoder: Decoder) -> String {
@@ -102,5 +101,6 @@ pub fn get_data(book: &Path
         None,
         sections_counter)?;
     
-    return Ok(data)
+
+    Ok(data)
 }

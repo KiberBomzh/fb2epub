@@ -54,22 +54,19 @@ pub fn binary_reader<R>(
             }
             
             Ok(Event::End(ref e)) => {
-                match e.name().as_ref() {
-                    b"binary" => {
-                        in_binary = false;
-                        
-                        if !current_image.id.is_empty() {
-                            images.insert(
-                                format!("#{}", current_image.id),
-                                current_image.clone()
-                            );
-                        };
-                        
-                        current_image.id.clear();
-                        current_image.content_type.clear();
-                        current_image.binary.clear();
-                    },
-                    _ => {}
+                if e.name().as_ref() == b"binary" {
+                    in_binary = false;
+                    
+                    if !current_image.id.is_empty() {
+                        images.insert(
+                            format!("#{}", current_image.id),
+                            current_image.clone()
+                        );
+                    };
+                    
+                    current_image.id.clear();
+                    current_image.content_type.clear();
+                    current_image.binary.clear();
                 }
             }
             
@@ -80,14 +77,12 @@ pub fn binary_reader<R>(
                 
                 
                 let mut text_trimmed = text.trim().to_string();
-                if !text_trimmed.is_empty() {
-                    if in_binary {
-                        text_trimmed = text_trimmed.replace("\r\n", "");
-                        text_trimmed = text_trimmed.replace("\n", "");
-                        text_trimmed = text_trimmed.replace(" ", "");
-                        
-                        current_image.binary.push_str(&text_trimmed);
-                    }
+                if !text_trimmed.is_empty() && in_binary {
+                    text_trimmed = text_trimmed.replace("\r\n", "");
+                    text_trimmed = text_trimmed.replace("\n", "");
+                    text_trimmed = text_trimmed.replace(" ", "");
+                    
+                    current_image.binary.push_str(&text_trimmed);
                 }
             }
             

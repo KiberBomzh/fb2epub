@@ -14,20 +14,20 @@ fn extract_books(path: &Path, temp_path: &Path) -> zip::result::ZipResult<Vec<Pa
         let mut file = archive.by_index(i)?;
         if file.is_dir() {continue}
 
-        if let Some(name) = file.enclosed_name() {
-            if name.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("fb2".to_string()) {
-                let outpath: PathBuf = temp_path.to_owned().join(
-                    if let Some(n) = name.file_name() {n}
-                    else {continue}
-                );
-                let mut outfile = File::create(&outpath)?;
-                io::copy(&mut file, &mut outfile)?;
-                files.push(outpath);
-            };
+        if let Some(name) = file.enclosed_name()
+        &&  name.extension().map(|s| s.to_string_lossy().to_lowercase()) == Some("fb2".to_string()) {
+            let outpath: PathBuf = temp_path.to_owned().join(
+                if let Some(n) = name.file_name() {n}
+                else {continue}
+            );
+            let mut outfile = File::create(&outpath)?;
+            io::copy(&mut file, &mut outfile)?;
+            files.push(outpath);
         };
     };
 
-    return Ok(files)
+    
+    Ok(files)
     
 }
 

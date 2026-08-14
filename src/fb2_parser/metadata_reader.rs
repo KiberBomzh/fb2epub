@@ -199,5 +199,6 @@ pub fn metadata_reader<R>(
     };
     buf.clear();
     
-    return Ok(meta)
+
+    Ok(meta)
 }

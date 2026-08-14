@@ -23,7 +23,8 @@ fn get_head(head_title: &str, id: &Option<String>) -> String {
         }
     );
     
-    return s
+
+    s
 }
 
 fn unwrap_title(level: u8, title: &Vec<Paragraph>, indent: usize, link_map: &HashMap<String, String>) -> String {
@@ -56,10 +57,10 @@ fn unwrap_title(level: u8, title: &Vec<Paragraph>, indent: usize, link_map: &Has
         result.push_str(&end_line);
         result.push('\n');
         
-        return result
-    
+
+        result
     } else {
-        return "".to_string()
+        "".to_string()
     }
 }
 
@@ -67,26 +68,26 @@ fn push_style_tags(
     s: &mut String,
     block: &TextBlock,
     end_tag: bool,
-    styles_ignore: &Vec<char>
+    styles_ignore: &[char]
 ) {
     let mut tags: Vec<char> = Vec::new();
     
-    if block.strong && !styles_ignore.iter().any(|i| *i == 'b') {
+    if block.strong && !styles_ignore.contains(&'b') {
         tags.push('b')
     }
-    if block.emphasis && !styles_ignore.iter().any(|i| *i == 'i') {
+    if block.emphasis && !styles_ignore.contains(&'i') {
         tags.push('i')
     }
-    if block.strikethrough && !styles_ignore.iter().any(|i| *i == 's') {
+    if block.strikethrough && !styles_ignore.contains(&'s') {
         tags.push('s')
     }
-    if block.code && !styles_ignore.iter().any(|i| *i == 'c') {
+    if block.code && !styles_ignore.contains(&'c') {
         tags.push('c')
     }
-    if block.sup && !styles_ignore.iter().any(|i| *i == 'u') {
+    if block.sup && !styles_ignore.contains(&'u') {
         tags.push('u') // от слова upper
     }
-    if block.sub && !styles_ignore.iter().any(|i| *i == 'l') {
+    if block.sub && !styles_ignore.contains(&'l') {
         tags.push('l') // от слова lower
     }
     
@@ -105,7 +106,7 @@ fn push_style_tags(
         }
     } else {
         for tag in &tags {
-            s.push_str(&match tag {
+            s.push_str(match tag {
                 'b' => "<b>",
                 'i' => "<i>",
                 's' => "<s>",
@@ -130,7 +131,8 @@ fn get_link_start(link: &Link, link_map: &HashMap<String, String>) -> String {
         } else {&link.link}
     } else {&link.link};
 
-    return match &link.link_type {
+
+    match &link.link_type {
         Some(t) if t == "note" => {
             format!("<a class=\"reference\" epub:type=\"noteref\" href=\"{href}\" id=\"{}\">", &link.link[1..])
         },
@@ -182,13 +184,13 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
         let mut left_part = String::new();
         let mut right_part = String::new();
         
-        push_style_tags(&mut right_part, &block, true, &styles_ignore);
+        push_style_tags(&mut right_part, block, true, &styles_ignore);
         if let Some(link) = &block.link {
             right_part.push_str("</a>");
-            let link_start = get_link_start(&link, link_map);
+            let link_start = get_link_start(link, link_map);
             left_part.push_str(&link_start);
         };
-        push_style_tags(&mut left_part, &block, false, &styles_ignore);
+        push_style_tags(&mut left_part, block, false, &styles_ignore);
 
         s.push_str(&left_part);
         s.push_str(&block.text);
@@ -202,7 +204,8 @@ fn unwrap_blocks(blocks: &Vec<TextBlock>, tabs: &str, block_type: &str, link_map
         s.push_str("</p>\n")
     }
     
-    return s
+
+    s
 }
 
 fn unwrap_img(href: &Option<String>, link_map: &HashMap<String, String>, tabs: &str) -> String {
@@ -227,11 +230,11 @@ fn unwrap_paragraph(paragraph: &Paragraph, link_map: &HashMap<String, String>, i
         Paragraph::Image(href) => unwrap_img(href, link_map, &tabs),
         Paragraph::V(blocks) => unwrap_blocks(blocks, &tabs, "v", link_map),
         Paragraph::TextAuthor(blocks) => unwrap_blocks(blocks, &tabs, "text-author", link_map),
-        Paragraph::Epigraph(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "epigraph"),
-        Paragraph::Cite(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "cite"),
-        Paragraph::Annotation(sub_section) => unwrap_section(&sub_section, link_map, indent + 1, "annotation"),
-        Paragraph::Poem(poem) => unwrap_poem(&poem, link_map, indent + 1),
-        Paragraph::Note(sub_section) => unwrap_section(&sub_section, link_map, indent + 2, "note")
+        Paragraph::Epigraph(sub_section) => unwrap_section(sub_section, link_map, indent + 1, "epigraph"),
+        Paragraph::Cite(sub_section) => unwrap_section(sub_section, link_map, indent + 1, "cite"),
+        Paragraph::Annotation(sub_section) => unwrap_section(sub_section, link_map, indent + 1, "annotation"),
+        Paragraph::Poem(poem) => unwrap_poem(poem, link_map, indent + 1),
+        Paragraph::Note(sub_section) => unwrap_section(sub_section, link_map, indent + 2, "note")
     }
 }
 
@@ -247,11 +250,11 @@ fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -
     );
     
     for stanza in &poem.stanzas {
-        s.push_str(&unwrap_stanza(&stanza, link_map, indent + 1))
+        s.push_str(&unwrap_stanza(stanza, link_map, indent + 1))
     };
     
     for paragraph in &poem.paragraphs {
-        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+        s.push_str(&unwrap_paragraph(paragraph, link_map, indent))
     };
     
     if !poem.date.is_empty() {
@@ -267,7 +270,8 @@ fn unwrap_poem(poem: &Poem, link_map: &HashMap<String, String>, indent: usize) -
         format!("{tabs}<div class=\"poem\">\n{s}{tabs}</div>\n")
     };
     
-    return s
+
+    s
 }
 
 fn unwrap_stanza(stanza: &Stanza, link_map: &HashMap<String, String>, indent: usize) -> String {
@@ -282,7 +286,7 @@ fn unwrap_stanza(stanza: &Stanza, link_map: &HashMap<String, String>, indent: us
     );
     
     for paragraph in &stanza.v {
-        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+        s.push_str(&unwrap_paragraph(paragraph, link_map, indent))
     };
     
     let tabs = TAB.repeat(indent - 1);
@@ -292,7 +296,8 @@ fn unwrap_stanza(stanza: &Stanza, link_map: &HashMap<String, String>, indent: us
         format!("{tabs}<div class=\"stanza\">\n{s}{tabs}</div>\n")
     };
     
-    return s
+
+    s
 }
 
 fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent: usize, section_type: &str) -> String {
@@ -307,7 +312,7 @@ fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent:
     );
     
     for paragraph in &section.paragraphs {
-        s.push_str(&unwrap_paragraph(&paragraph, link_map, indent))
+        s.push_str(&unwrap_paragraph(paragraph, link_map, indent))
     };
     
     let tabs = TAB.repeat(indent - 1);
@@ -344,10 +349,11 @@ fn unwrap_section(section: &Section, link_map: &HashMap<String, String>, indent:
             
             left_part + &s + &right_part
         },
-        "section" | _ => s
+        _ => s
     };
     
-    return s
+
+    s
 }
 
 pub fn html_builder(section: &Section, link_map: &HashMap<String, String>, title: &str) -> String {
@@ -358,6 +364,6 @@ pub fn html_builder(section: &Section, link_map: &HashMap<String, String>, title
     html.push_str(&unwrap_section(section, link_map, indent, "section"));
     html.push_str(&format!("{TAB}</body>\n</html>"));
     
-    // println!("{html}\n\n");
-    return html
+
+    html
 }

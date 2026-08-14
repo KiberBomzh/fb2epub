@@ -134,8 +134,7 @@ pub fn content_reader<R>(
                         section_id.push(get_attr(e, "id", decoder));
                         
                         if !paragraphs.is_empty() | !title.is_empty() {
-                            sections.push(Section {
-                                level: level,
+                            sections.push(Section { level,
                                 id: if level > 0 {
                                     match section_id.pop() {
                                         Some(id) if id.is_empty() => None,
@@ -246,8 +245,7 @@ pub fn content_reader<R>(
                     b"body" => break,
                     b"section" => {
                         if !paragraphs.is_empty() | !title.is_empty() {
-                            sections.push(Section {
-                                level: level,
+                            sections.push(Section { level,
                                 id: match section_id.pop() {
                                     Some(id) if id.is_empty() => None,
                                     Some(id) => {
@@ -419,7 +417,7 @@ pub fn content_reader<R>(
                 if !text.trim().is_empty() {
                     if in_date {
                         date.push(TextBlock {
-                            text: text,
+                            text,
                             strong,
                             emphasis,
                             strikethrough,
@@ -431,7 +429,7 @@ pub fn content_reader<R>(
                         link = None;
                     } else if in_p || in_v || in_text_author || in_subtitle || in_title {
                         paragraph.push(TextBlock {
-                            text: text,
+                            text,
                             strong,
                             emphasis,
                             strikethrough,
