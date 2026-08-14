@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::{PathBuf, Path};
 use std::io;
 
@@ -59,26 +59,22 @@ pub fn convert_archive(
         );
     };
 
-    let mut parent = output.parent()
-            .ok_or(format!("Cannot get parent folder for: {:#?}", path))?
-            .to_path_buf();
-    
+    if output.is_file() {
+        fs::remove_file(output)?;
+    }
     if !output.exists() {
-        let out_folder_name = output.file_name()
-            .and_then(|n| n.to_str())
-                .ok_or(format!("Cannot get output folder for: {:#?}", path))?;
-        
-        parent = if let Some(r_index) = out_folder_name.rfind(".epub") {
-            parent.join(format!("{}_out", &out_folder_name[..r_index]))
-        } else {output.to_path_buf()}
-    };
+        fs::create_dir_all(output)?;
+    }
     
     for file in &files {
-        let file_name = if let Some(name) = file
-            .file_stem().and_then(|os| os.to_str()) {
-                name.to_string() + ".epub"
-        } else {continue};
-        let file_output = parent.join(file_name);
+        let file_name = 
+            if let Some(name) = file
+                .with_extension("epub")
+                .file_name()
+                .and_then(|s| s.to_str() ) { name.to_string() }
+                else {continue};
+
+        let file_output = output.join(file_name);
         crate::run(
             file,
             &file_output,
@@ -90,5 +86,6 @@ pub fn convert_archive(
         )?;
     };
 
-    Ok(parent)
+
+    Ok(output.to_path_buf())
 }

@@ -49,28 +49,6 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 }
 
 
-fn get_free_output(output: &Path) -> Option<PathBuf> {
-    let mut file_name = output.file_stem()?.to_str()?;
-    
-    if file_name.ends_with(".fb2")
-    && let Some(r_index) = file_name.rfind(".") {
-        file_name = &file_name[..r_index]
-    };
-    
-    let parent = output.parent()?;
-    let mut free_output = parent.join(format!("{file_name}.epub"));
-    
-    let mut counter = 1;
-    while free_output.exists() {
-        free_output = parent.join(format!("{file_name}-{counter}.epub"));
-        counter += 1;
-    };
-    
-
-    Some(free_output.to_owned())
-}
-
-
 /// Main function, takes path to fb2 book (or zip archive), returns path to new epub book.
 ///
 /// If replace = true input fb2 book will be deleted.
@@ -87,7 +65,7 @@ pub fn run(
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     #[cfg(feature = "zip")]
-    if book.extension().and_then(|s| Some(s.to_str()?.to_lowercase())) == Some("zip".to_string()) {
+    if book.extension().is_some_and(|s| s.to_string_lossy().to_lowercase().as_str() == "zip") {
         match crate::zip_reader::convert_archive(
             book,
             output,
@@ -110,15 +88,6 @@ pub fn run(
     if debug {
         print_sections(&data.content, false);
     }
-    
-    
-    // Проверка имени файла
-    if let Some(p) = output.parent() && !p.exists() {
-        fs::create_dir_all(p)?
-    };
-    
-    let output =  &if let Some(o) = get_free_output(output) {o}
-    else {output.to_owned()};
     
     
     if let Some(meta) = metadata {

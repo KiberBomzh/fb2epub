@@ -115,8 +115,11 @@ fn main() {
 
         if is_windows() || args.debug {
             for file in files {
-                let output = if let Some(o) = get_out_name(&file, output.clone()) {o}
-                else {continue};
+                let output = if let Some(o) = get_out_path(&file, output.clone()) {o}
+                else {
+                    eprintln!("Cannot get output path for {:#?}", file);
+                    continue;
+                };
         
                 let styles_path = styles_path.clone();
                 let metadata = metadata.clone();
@@ -139,7 +142,7 @@ fn main() {
             let bar = ProgressBar::new(files.len().try_into().unwrap());
 
             for file in files {
-                let output = if let Some(o) = get_out_name(&file, output.clone()) {o}
+                let output = if let Some(o) = get_out_path(&file, output.clone()) {o}
                 else {continue};
 
                 let styles_path = styles_path.clone();
@@ -167,7 +170,8 @@ fn main() {
     } else {
         if is_windows() || args.debug {
             let file = &files[0];
-            let output = get_out_name(file, output.clone()).unwrap();
+            let output = get_out_path(file, output.clone())
+                .expect("Cannot get output path!");
     
             match fb2epub::run(
                 file,
@@ -183,7 +187,8 @@ fn main() {
             }
         } else {
             let file = &files[0];
-            let output = get_out_name(file, output.clone()).unwrap();
+            let output = get_out_path(file, output.clone())
+                .expect("Cannot get output path!");
 
         
             let file_name = if let Some(name) = file.file_name()
@@ -285,32 +290,50 @@ fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
     return files
 }
 
-fn get_out_name(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
-    let suffix = ".epub";
-    let file_stem: &str = if let Some(name) = file.file_stem() {
-        if let Some(n) = name.to_str() {
-            n
+fn get_out_path(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
+    if let Some(o_path) = output {
+        if o_path.is_dir() {
+            Some(o_path
+                .join(file
+                    .with_extension("epub")
+                    .file_name()?
+                )
+            )
         } else {
-            "new_book"
+            Some(o_path)
         }
     } else {
-        "new_book"
-    };
-    let file_name = file_stem.to_string() + suffix;
-    
-    let mut parent: PathBuf = file.parent()?.to_path_buf();
-    
-    if let Some(output) = output {
-        if output.is_dir() {
-            let mut o = output.clone();
-            o.push(file_name);
-            Some(o)
-        } else {
-            Some(output)
-        }
-    } else {
-        parent.push(file_name);
-        Some(parent)
+        let file_name = file
+            .with_extension("epub")
+            .file_name()?
+            .to_str()?
+            .to_string();
+
+        let parent = file.parent()?;
+        
+        get_free_output(&parent.join(file_name))
     }
 }
+
+fn get_free_output(output: &Path) -> Option<PathBuf> {
+    let mut file_name = output.file_stem()?.to_str()?;
+    
+    if file_name.ends_with(".fb2")
+    && let Some(r_index) = file_name.rfind(".") {
+        file_name = &file_name[..r_index]
+    };
+    
+    let parent = output.parent()?;
+    let mut free_output = parent.join(format!("{file_name}.epub"));
+    
+    let mut counter = 1;
+    while free_output.exists() {
+        free_output = parent.join(format!("{file_name}-{counter}.epub"));
+        counter += 1;
+    };
+    
+
+    Some(free_output.to_owned())
+}
+
 
