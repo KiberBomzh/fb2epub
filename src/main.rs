@@ -76,114 +76,11 @@ fn is_windows() -> bool {true}
 fn is_windows() -> bool {false}
 
 
-fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
-    let entries = fs::read_dir(dir)?;
-    for entry in entries {
-        let path = entry?.path();
-        if path.is_dir() {
-            if recursive {read_dir(&path, files, recursive)?}
-            continue
-        };
-        if path.is_file() {
-            if let Some(extension) = path.extension() {
-                if let Some(ext) = extension.to_str() {
-                    if ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
-                        if !files.contains(&path) {files.push(path)}
-                    }
-                }
-            }
-        }
-    };
-    
-    Ok(())
-}
-
-fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
-    let mut files: Vec<PathBuf> = Vec::new();
-    for i in inputs {
-        let path = PathBuf::from(i);
-        
-        // Проверки
-        if !path.exists() {
-            eprintln!("There's no such path: {:?}!", path);
-            continue
-        };
-        
-        if path.is_dir() {
-            if let Err(err) = read_dir(&path, &mut files, recursive) {
-                eprintln!("Error while reading directory {:#?}: {}!", path, err)
-            };
-            continue
-        };
-        
-        if path.is_file() {
-            if let Some(extension) = path.extension() {
-                if let Some(ext) = extension.to_str() {
-                    if ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
-                        if !files.contains(&path) {files.push(path)}
-                    }
-                }
-            }
-        }
-    };
-    
-    return files
-}
-
-fn get_out_name(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
-    let suffix = ".epub";
-    let file_stem: &str = if let Some(name) = file.file_stem() {
-        if let Some(n) = name.to_str() {
-            n
-        } else {
-            "new_book"
-        }
-    } else {
-        "new_book"
-    };
-    let file_name = file_stem.to_string() + suffix;
-    
-    let mut parent: PathBuf = file.parent()?.to_path_buf();
-    
-    if let Some(output) = output {
-        if output.is_dir() {
-            let mut o = output.clone();
-            o.push(file_name);
-            Some(o)
-        } else {
-            Some(output)
-        }
-    } else {
-        parent.push(file_name);
-        Some(parent)
-    }
-}
-
-fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
-    let metadata = fb2epub::Metadata {
-        title: args.title.clone(),
-        authors: args.author.clone(),
-        language: args.language.clone(),
-        series: args.series.clone(),
-        series_index: args.series_index.clone(),
-        description: None
-    };
-
-    if metadata.title == None &&
-        metadata.authors == None &&
-        metadata.language == None &&
-        metadata.series == None &&
-        metadata.series_index == None &&
-        metadata.description == None { None }
-    else { Some(metadata) }
-}
-
-
 fn main() {
     let args = Args::parse();
     let files = get_files(&args.input, args.recursive);
     if files.is_empty() {
-        panic!("There's no fb2 books in input!")
+        panic!("There's no fb2 books in the input!")
     };
     
     let output = match args.output {
@@ -194,7 +91,7 @@ fn main() {
                     Some(output_path)
                 } else {
                     fs::create_dir_all(&output_path)
-                        .expect("Error while creating output folder");
+                        .expect("Error while creating output folder!");
                     Some(output_path)
                 }
             } else {
@@ -317,3 +214,103 @@ fn main() {
         }
     }
 }
+
+fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
+    let metadata = fb2epub::Metadata {
+        title: args.title.clone(),
+        authors: args.author.clone(),
+        language: args.language.clone(),
+        series: args.series.clone(),
+        series_index: args.series_index.clone(),
+        description: None
+    };
+
+    if metadata.title == None &&
+        metadata.authors == None &&
+        metadata.language == None &&
+        metadata.series == None &&
+        metadata.series_index == None &&
+        metadata.description == None { None }
+    else { Some(metadata) }
+}
+
+
+
+fn is_allowed(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|ext|
+        ALLOWED_EXTENSIONS.contains(
+            &ext.to_string_lossy().to_lowercase().as_str()
+        )
+    )
+}
+
+fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
+    let entries = fs::read_dir(dir)?;
+    for entry in entries {
+        let path = entry?.path();
+        if path.is_dir() {
+            if recursive {read_dir(&path, files, recursive)?}
+            continue
+        } else if is_allowed(&path) && !files.contains(&path) {
+            files.push(path)
+        }
+    }
+    
+    Ok(())
+}
+
+fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    for i in inputs {
+        let path = PathBuf::from(i);
+        
+        // Проверки
+        if !path.exists() {
+            eprintln!("There's no such path: {:?}!", path);
+            continue
+        };
+        
+        if path.is_dir() {
+            if let Err(err) = read_dir(&path, &mut files, recursive) {
+                eprintln!("Error while reading directory {:#?}: {}!", path, err)
+            };
+            continue
+        };
+        
+        if is_allowed(&path) && !files.contains(&path) {
+            files.push(path);
+        }
+    }
+    
+    return files
+}
+
+fn get_out_name(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
+    let suffix = ".epub";
+    let file_stem: &str = if let Some(name) = file.file_stem() {
+        if let Some(n) = name.to_str() {
+            n
+        } else {
+            "new_book"
+        }
+    } else {
+        "new_book"
+    };
+    let file_name = file_stem.to_string() + suffix;
+    
+    let mut parent: PathBuf = file.parent()?.to_path_buf();
+    
+    if let Some(output) = output {
+        if output.is_dir() {
+            let mut o = output.clone();
+            o.push(file_name);
+            Some(o)
+        } else {
+            Some(output)
+        }
+    } else {
+        parent.push(file_name);
+        Some(parent)
+    }
+}
+
