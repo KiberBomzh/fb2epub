@@ -3,9 +3,7 @@ pub mod content_reader;
 pub mod binary_reader;
 
 
-use std::path::Path;
-use std::fs::File;
-use std::io::BufReader;
+use std::io::{Read, BufReader};
 use std::collections::HashMap;
 
 use quick_xml::reader::Reader;
@@ -80,10 +78,8 @@ pub fn get_counter_str(c: usize) -> String {
 }
 
 
-pub fn get_data(book: &Path
+pub fn parse<R: Read>(reader: BufReader<R>,
 ) -> Result<BookData, Box<dyn std::error::Error>> {
-    let file = File::open(book)?;
-    let reader = BufReader::new(file);
     let mut xml_reader = Reader::from_reader(reader);
     let mut buf = Vec::new();
     let sections_counter = 0;

@@ -84,7 +84,8 @@ pub fn run(
     };
 
     // Чтение входного FB2
-    let mut data = fb2_parser::get_data(book)?;
+    let file = fs::File::open(book)?;
+    let mut data = fb2_parser::parse(std::io::BufReader::new(file))?;
     if debug {
         print_sections(&data.content, false);
     }
