@@ -38,7 +38,7 @@ pub fn convert_archive(
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
 
@@ -51,7 +51,6 @@ pub fn convert_archive(
         return crate::run(
             &files[0],
             output,
-            false,
             styles_path,
             metadata,
             suspend_error_messages,
@@ -78,7 +77,6 @@ pub fn convert_archive(
         crate::run(
             file,
             &file_output,
-            false,
             styles_path,
             metadata.clone(),
             suspend_error_messages,
@@ -87,5 +85,5 @@ pub fn convert_archive(
     };
 
 
-    Ok(output.to_path_buf())
+    Ok(())
 }

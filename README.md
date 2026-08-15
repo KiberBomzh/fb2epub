@@ -3,7 +3,7 @@ Cli tool for convering fb2 books to epub. Written in pure rust.
 ## Installation
 With cargo:
 ```
-cargo install fb2epub --features=bin-deps
+cargo install fb2epub
 ```
 Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/latest).
 ## Flags
@@ -11,7 +11,7 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 - `-o`, `--output` `path` - output path. If input is one book - can be directory or file name, else - only directory
 - `--styles` `path/to/file.css` - use custom css styles
 - `-r`, `--recursive` - search books as well in subdirectories 
-- `--replace` - **REMOVE** input files
+- `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--input`, `--output`, `--recursive` arguments will be ignored.
 ### Flags for metadata
 - `--title` - set title for output book
 - `--author` - set authors for output book
@@ -22,19 +22,21 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 ## Usage as library
 Add to your project with:
 ```
-cargo add fb2epub
+cargo add fb2epub --no-default-features
 ```
 
-Then use function `run`:
+Then use function `convert`:
 ```rust
 use std::path::PathBuf;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 fn main() {
-    let input_book = PathBuf::from("some_book.fb2");
-    let output_book = PathBuf::from("out_book.epub");
-    
-    // delete input book
-    let replace = false;
+    let input_book = File::open("some_book.fb2").unwrap();
+    let reader = BufReader::new(input_book);
+
+    let output_book = File::create("out_book.epub").unwrap();
+    let writer = BufWriter::new(output_book);
     
     // dont show small errors (image decoder errors, etc)
     let suspend_error_messages = false;
@@ -45,42 +47,28 @@ fn main() {
     // path to css styles Option<&Path>, if None will be used default styles
     let styles = Some(PathBuf::from("some/styles.css"));
     
+    // override output book metadata
+    let metadata = fb2epub::Metadata {
+        title: Some( "some title".to_string() ),
+        authors: Some( vec![
+            "Author One".to_string(),
+            "Author NoOne".to_string(),
+        ]),
+        language: None,
+        series: Some( "Very cool series".to_string() ),
+        series_index: None,
+        description: Some(vec![
+            "Paragraph number one, some words...".to_string(),
+            "Paragraph two".to_string(),
+            "The short one, actually, no. It is the longest paragraph here.".to_string(),
+        ]),
+    };
     
-    fb2epub::run(
-        &input_book,
-        &output_book,
-        replace,
+    fb2epub::convert(
+        reader,
+        writer,
         styles.as_deref(),
-        suspend_error_messages,
-        debug
-    ).unwrap(); // returns Result<PathBuf>
-    // PathBuf is path to output book
-    
-    // as well you can convert zip
-    let input_archive = PathBuf::from("some_book.zip");
-    let output_archive = PathBuf::from("out_archive.epub");
-    
-    fb2epub::run(
-        &input_archive,
-        &output_archive,
-        replace,
-        styles.as_deref(),
-        suspend_error_messages,
-        debug
-    ).unwrap();
-    
-    
-    // or even zip with many books in it
-    let zip_with_many_books = PathBuf::from("zip_with_books.zip");
-    
-    // for it output path must be a directory
-    let output_dir = PathBuf::from("some_dir");
-    
-    fb2epub::run(
-        &zip_with_many_books,
-        &output_dir,
-        replace,
-        styles.as_deref(),
+        Some(metadata),
         suspend_error_messages,
         debug
     ).unwrap();

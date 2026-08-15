@@ -3,7 +3,7 @@ pub mod content_reader;
 pub mod binary_reader;
 
 
-use std::io::{Read, BufReader};
+use std::io::BufRead;
 use std::collections::HashMap;
 
 use quick_xml::reader::Reader;
@@ -78,7 +78,7 @@ pub fn get_counter_str(c: usize) -> String {
 }
 
 
-pub fn parse<R: Read>(reader: BufReader<R>,
+pub fn parse<R: BufRead>(reader: R,
 ) -> Result<BookData, Box<dyn std::error::Error>> {
     let mut xml_reader = Reader::from_reader(reader);
     let mut buf = Vec::new();

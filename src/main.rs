@@ -15,24 +15,24 @@ mod zip_reader;
 #[command(version, about, long_about = None)]
 struct Args {
     /// Input files. Can be a file or a directory. Also you can use it many times
-    #[arg(short, long, num_args = 1.., required = true)]
-    input: Vec<String>,
+    #[arg(short, long, num_args = 1..)]
+    input: Vec<PathBuf>,
     
     /// Output path. Directory. If there's only one input book also can be a file.
     #[arg(short, long)]
-    output: Option<String>,
+    output: Option<PathBuf>,
     
     /// Custom css styles for a book. Path to a .css file
     #[arg(long)]
-    styles: Option<String>,
+    styles: Option<PathBuf>,
     
     /// Include all books from subdirs of given in --input directory.
     #[arg(short, long)]
     recursive: bool,
 
-    /// DELETE inputs files after convertation.
-    #[arg(long)]
-    replace: bool,
+    /// Read input (only fb2) from stdin, write epub in stdout.
+    #[arg(short, long)]
+    pipe: bool,
 
     /// Use debug mod
     #[arg(long)]
@@ -80,62 +80,90 @@ fn is_windows() -> bool {false}
 
 fn main() {
     let args = Args::parse();
-    let files = get_files(&args.input, args.recursive);
-    if files.is_empty() {
+    if args.pipe {
+        handle_pipe(args);
+        return;
+    }
+
+
+    let mut inputs = get_inputs(args.input, args.recursive);
+    if inputs.is_empty() {
         panic!("There's no fb2 books in the input!")
     };
-    
-    let output = match args.output {
-        Some(ref o) => {
-            let output_path = PathBuf::from(o);
-            if files.len() > 1 {
-                if output_path.is_dir() {
-                    Some(output_path)
-                } else {
-                    fs::create_dir_all(&output_path)
-                        .expect("Error while creating output folder!");
-                    Some(output_path)
-                }
-            } else {
-                Some(output_path)
+
+    if let Some(p) = &args.output &&  !p.is_dir() {
+        if p.is_file() {
+            let result = fs::remove_file(p);
+            if let Err(err) = result {
+                panic!("Error while setting output path: {err}")
             }
         }
-        None => None
+
+        let result = fs::create_dir_all(p);
+        if let Err(err) = result {
+            panic!("Error while setting output path: {err}")
+        }
+    }
+
+    let mut outputs: Vec<PathBuf> = if inputs.len() > 1 {
+        match get_outputs(&inputs, args.output) {
+            Ok(result) => result,
+            Err(err) => panic!("Error while getting output path: {err}"),
+        }
+    } else {
+        if let Some(o) = args.output {
+            vec![o]
+        } else {
+            match get_out_path(&inputs[0], &[]) {
+                Some(o) => vec![o],
+                None => panic!("Error while getting output path for: {:#?}", &inputs[0]),
+            }
+        }
     };
-    
-    let styles_path: Option<PathBuf> = if let Some(ref styles) = args.styles {
-        let s_path = PathBuf::from(styles);
-        if s_path.is_file() {Some(s_path)}
-        else {None}
-    } else {None};
 
-    let metadata = parse_meta_from_args(&args);
+    if inputs.len() != outputs.len() {
+        panic!("Error while getting output path: inputs.len() and outputs.len() doesnt match!");
+    }
+    let mut files: Vec<(PathBuf, PathBuf)> = Vec::with_capacity(inputs.len());
+    while let Some(i) = inputs.pop() && let Some(o) = outputs.pop() {
+        files.push( (i, o) );
+    }
 
     
+    let styles_path: Option<PathBuf> = args.styles.and_then(|p| {
+        if p.is_file() {
+            Some(p)
+        } else {
+            None
+        }
+    });
+
+    let metadata = parse_meta_from_args(
+        args.title,
+        args.author,
+        args.language,
+        args.series,
+        args.series_index,
+    );
+
+
     if files.len() > 1 {
         let pool = ThreadPool::new(10);
 
         if is_windows() || args.debug {
-            for file in files {
-                let output = if let Some(o) = get_out_path(&file, output.clone()) {o}
-                else {
-                    eprintln!("Cannot get output path for {:#?}", file);
-                    continue;
-                };
-        
+            while let Some(file) = files.pop() {
                 let styles_path = styles_path.clone();
                 let metadata = metadata.clone();
                 pool.execute(move || {
                     match run(
-                        &file,
-                        &output,
-                        args.replace,
+                        file.0,
+                        &file.1,
                         styles_path.as_deref(),
                         metadata,
                         true,
                         args.debug
                     ) {
-                        Ok(o) => println!("Saved to {:#?}", o),
+                        Ok(_) => println!("Saved to {:#?}", file.1),
                         Err(err) => eprintln!("{err}")
                     }
                 });
@@ -143,18 +171,14 @@ fn main() {
         } else {
             let bar = ProgressBar::new(files.len().try_into().unwrap());
 
-            for file in files {
-                let output = if let Some(o) = get_out_path(&file, output.clone()) {o}
-                else {continue};
-
+            while let Some(file) = files.pop() {
                 let styles_path = styles_path.clone();
                 let metadata = metadata.clone();
                 let bar = bar.clone();
                 pool.execute(move || {
                     match run(
-                        &file,
-                        &output,
-                        args.replace,
+                        file.0,
+                        file.1,
                         styles_path.as_deref(),
                         metadata,
                         true,
@@ -171,29 +195,25 @@ fn main() {
         pool.join();
     } else {
         if is_windows() || args.debug {
-            let file = &files[0];
-            let output = get_out_path(file, output.clone())
-                .expect("Cannot get output path!");
+            let file = files.pop()
+                .expect("Vec should have only one element");
     
             match run(
-                file,
-                &output,
-                args.replace,
+                file.0,
+                &file.1,
                 styles_path.as_deref(),
                 metadata,
                 true,
                 args.debug
             ) {
-                Ok(o) => println!("Saved to {:#?}", o),
+                Ok(_) => println!("Saved to {:#?}", file.1),
                 Err(err) => eprintln!("{err}")
             }
         } else {
-            let file = &files[0];
-            let output = get_out_path(file, output.clone())
-                .expect("Cannot get output path!");
-
+            let file = files.pop()
+                .expect("Vec should have only one element");
         
-            let file_name = file.file_name()
+            let file_name = file.0.file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("Cannot get file name!");
             
@@ -206,9 +226,8 @@ fn main() {
             sp.set_message(file_name.to_owned());
         
             if let Err(err) = run(
-                file,
-                &output,
-                args.replace,
+                file.0,
+                file.1,
                 styles_path.as_deref(),
                 metadata,
                 true,
@@ -222,61 +241,101 @@ fn main() {
     }
 }
 
-fn run(
-    book: &Path, 
-    output: &Path, 
-    replace: bool, 
+
+fn handle_pipe(args: Args) {
+    use std::io::{self, BufReader, BufWriter};
+
+
+    let styles_path: Option<PathBuf> = if let Some(ref styles) = args.styles {
+        let s_path = PathBuf::from(styles);
+        if s_path.is_file() {Some(s_path)}
+        else {None}
+    } else {None};
+
+    let metadata = parse_meta_from_args(
+        args.title,
+        args.author,
+        args.language,
+        args.series,
+        args.series_index,
+    );
+
+    let reader = BufReader::new(io::stdin());
+    let writer = BufWriter::new(io::stdout());
+    let result = fb2epub::convert(
+        reader,
+        writer,
+        styles_path.as_deref(),
+        metadata,
+        false, // suspend_error_messages
+        false, // debug
+    );
+
+    if let Err(err) = result {
+        eprintln!("{err}");
+    }
+}
+
+fn run<I: AsRef<Path>, O: AsRef<Path>>(
+    input: I,
+    output: O,
     styles_path: Option<&Path>,
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "zip")]
-    if book.extension().is_some_and(|s| s.to_string_lossy().to_lowercase().as_str() == "zip") {
-        match crate::zip_reader::convert_archive(
-            book,
-            output,
+    if input
+        .as_ref()
+        .extension()
+        .is_some_and(|s|
+            s.to_string_lossy().to_lowercase().as_str() == "zip"
+        )
+    {
+        crate::zip_reader::convert_archive(
+            input.as_ref(),
+            output.as_ref(),
             styles_path,
             metadata,
             suspend_error_messages,
             debug
-        ) {
-            Ok(o) if replace => {
-                fs::remove_file(book)?;
-                return Ok(o)
-            },
-            Ok(o) => return Ok(o),
-            Err(err) => return Err(err)
-        }
+        )?;
+        return Ok(())
     };
 
 
-    let file = fs::File::open(book)?;
+    let file = fs::File::open(input)?;
     let reader = std::io::BufReader::new(file);
-    match fb2epub::convert(
+
+    let file = fs::File::create(output)?;
+    let writer = std::io::BufWriter::new(file);
+    fb2epub::convert(
         reader,
-        output,
+        writer,
         styles_path,
         metadata,
         suspend_error_messages,
         debug
-    ) {
-        Ok(o) if replace => {
-            fs::remove_file(book)?;
+    )?;
 
-            Ok(o)
-        },
-        err => err,
-    }
+
+    Ok(())
 }
 
-fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
+
+fn parse_meta_from_args(
+    title: Option<String>,
+    authors: Option<Vec<String>>,
+    language: Option<String>,
+    series: Option<String>,
+    series_index: Option<String>,
+) -> Option<fb2epub::Metadata> {
     let metadata = fb2epub::Metadata {
-        title: args.title.clone(),
-        authors: args.author.clone(),
-        language: args.language.clone(),
-        series: args.series.clone(),
-        series_index: args.series_index.clone(),
+        title,
+        authors,
+        language,
+        series,
+        series_index,
         description: None
     };
 
@@ -292,14 +351,28 @@ fn parse_meta_from_args(args: &Args) -> Option<fb2epub::Metadata> {
 
 
 
-fn is_allowed(path: &Path) -> bool {
-    path.is_file() && path.extension().is_some_and(|ext|
-        ALLOWED_EXTENSIONS.contains(
-            &ext.to_string_lossy().to_lowercase().as_str()
-        )
-    )
+fn get_inputs(inputs: Vec<PathBuf>, recursive: bool) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    for path in inputs {
+        // Проверки
+        if !path.exists() {
+            panic!("There's no such path: {:?}!", path);
+        };
+        
+        if path.is_dir() {
+            if let Err(err) = read_dir(&path, &mut files, recursive) {
+                panic!("Error while reading directory {:#?}: {}!", path, err)
+            };
+            continue
+        };
+        
+        if is_allowed(&path) && !files.contains(&path) {
+            files.push(path);
+        }
+    }
+    
+    files
 }
-
 fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
     let entries = fs::read_dir(dir)?;
     for entry in entries {
@@ -314,77 +387,67 @@ fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::R
     
     Ok(())
 }
-
-fn get_files(inputs: &Vec<String>, recursive: bool) -> Vec<PathBuf> {
-    let mut files: Vec<PathBuf> = Vec::new();
-    for i in inputs {
-        let path = PathBuf::from(i);
-        
-        // Проверки
-        if !path.exists() {
-            eprintln!("There's no such path: {:?}!", path);
-            continue
-        };
-        
-        if path.is_dir() {
-            if let Err(err) = read_dir(&path, &mut files, recursive) {
-                eprintln!("Error while reading directory {:#?}: {}!", path, err)
-            };
-            continue
-        };
-        
-        if is_allowed(&path) && !files.contains(&path) {
-            files.push(path);
-        }
-    }
-    
-    files
+fn is_allowed(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|ext|
+        ALLOWED_EXTENSIONS.contains(
+            &ext.to_string_lossy().to_lowercase().as_str()
+        )
+    )
 }
 
-fn get_out_path(file: &Path, output: Option<PathBuf>) -> Option<PathBuf> {
-    if let Some(o_path) = output {
-        if o_path.is_dir() {
-            Some(o_path
-                .join(file
-                    .with_extension("epub")
-                    .file_name()?
-                )
-            )
-        } else {
-            Some(o_path)
-        }
-    } else {
-        let file_name = file
-            .with_extension("epub")
-            .file_name()?
-            .to_str()?
-            .to_string();
 
-        let parent = file.parent()?;
-        
-        get_free_output(&parent.join(file_name))
+fn get_outputs( // this funcion only needs when inputs.len() > 1
+    inputs: &[PathBuf],
+    output: Option<PathBuf> // if output is some, then it is dir and it is already exists
+) -> Result<Vec<PathBuf>, String> {
+    let mut outputs = Vec::new();
+    for input in inputs {
+        let out = 
+            if let Some(p) = &output { 
+                get_out_path_with_parent(input, p, &outputs)
+            } else {
+                get_out_path(input, &outputs)
+            }.ok_or(format!("Cannot get output path for {:#?}", input))?;
+
+        outputs.push(out);
     }
-}
 
-fn get_free_output(output: &Path) -> Option<PathBuf> {
-    let mut file_name = output.file_stem()?.to_str()?;
-    
-    if file_name.ends_with(".fb2")
-    && let Some(r_index) = file_name.rfind(".") {
-        file_name = &file_name[..r_index]
-    };
-    
-    let parent = output.parent()?;
-    let mut free_output = parent.join(format!("{file_name}.epub"));
-    
+
+    Ok(outputs)
+}
+fn get_out_path(
+    input: &Path,
+    outputs: &[PathBuf]
+) -> Option<PathBuf> {
+    let parent = input.parent()?;
+    get_out_path_with_parent(input, parent, outputs)
+}
+fn get_out_path_with_parent(
+    input: &Path,
+    parent: &Path,
+    outputs: &[PathBuf]
+) -> Option<PathBuf> {
+    let mut stem = input.file_stem()?.to_str()?.to_string();
+    if stem.to_lowercase().ends_with(".fb2") {
+        stem = stem[..stem.len() - 4].to_string();
+    }
+    let ext = "epub";
+
+    Some(get_free_path(&stem, ext, parent, outputs))
+}
+fn get_free_path(
+    stem: &str,
+    extension: &str,
+    parent: &Path,
+    outputs: &[PathBuf]
+) -> PathBuf {
+    let mut path = parent.join(format!("{stem}.{extension}"));
     let mut counter = 1;
-    while free_output.exists() {
-        free_output = parent.join(format!("{file_name}-{counter}.epub"));
+    while path.exists() || outputs.contains(&path) {
+        path = parent.join(format!("{stem}-{counter}.{extension}"));
         counter += 1;
-    };
-    
+    }
 
-    Some(free_output.to_owned())
+    path
 }
-
 

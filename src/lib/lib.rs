@@ -2,8 +2,8 @@ mod fb2_parser;
 mod epub_creator;
 
 
-use std::path::{PathBuf, Path};
-use std::io::{Read, BufReader};
+use std::path::Path;
+use std::io::{BufRead, Write};
 
 use crate::fb2_parser::metadata_reader::Sequence;
 
@@ -52,14 +52,14 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 /// If replace = true input fb2 book will be deleted.
 ///
 /// styles_path is path to custom stylesheet, for default styles use None.
-pub fn convert<R: Read>(
-    reader: BufReader<R>, 
-    output: &Path, 
+pub fn convert<R: BufRead, W: Write>(
+    reader: R, 
+    writer: W,
     styles_path: Option<&Path>,
     metadata: Option<Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     // Чтение входного FB2
     let mut data = fb2_parser::parse(reader)?;
     if debug {
@@ -103,8 +103,8 @@ pub fn convert<R: Read>(
     };
     
     // Создание EPUB
-    match epub_creator::create_epub(&mut data, output, styles_path, suspend_error_messages) {
-        Ok(o) => Ok(o),
-        Err(err) => Err(format!("Error while creating Epub: {}!", err).into())
-    }
+    epub_creator::create_epub(&mut data, writer, styles_path, suspend_error_messages)?;
+
+
+    Ok(())
 }
