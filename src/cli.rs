@@ -1,63 +1,16 @@
 #[cfg(feature = "zip")]
 mod zip_reader;
 
+mod args;
+
 
 use std::path::{PathBuf, Path};
 use std::fs;
 
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use threadpool::ThreadPool;
+use clap::Parser;
 
-
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Input files. Can be a file or a directory. Also you can use it many times
-    #[arg(short, long, num_args = 1..)]
-    input: Vec<PathBuf>,
-    
-    /// Output path. Directory. If there's only one input book also can be a file.
-    #[arg(short, long)]
-    output: Option<PathBuf>,
-    
-    /// Custom css styles for a book. Path to a .css file
-    #[arg(long)]
-    styles: Option<PathBuf>,
-    
-    /// Include all books from subdirs of given in --input directory.
-    #[arg(short, long)]
-    recursive: bool,
-
-    /// Read input (only fb2) from stdin, write epub in stdout.
-    #[arg(short, long)]
-    pipe: bool,
-
-    /// Use debug mod
-    #[arg(long)]
-    debug: bool,
-
-
-    /// Use given title for input book(s)
-    #[arg(long)]
-    title: Option<String>,
-
-    /// Use given author(s) for input book(s)
-    #[arg(long, num_args = 1..)]
-    author: Option<Vec<String>>,
-
-    /// Use given language for input book(s)
-    #[arg(long)]
-    language: Option<String>,
-
-    /// Use given series for input book(s)
-    #[arg(long)]
-    series: Option<String>,
-
-    /// Use given series index for input book(s)
-    #[arg(long)]
-    series_index: Option<String>
-}
 
 #[cfg(feature = "zip")]
 const ALLOWED_EXTENSIONS: [&str; 2] = [
@@ -78,7 +31,7 @@ fn is_windows() -> bool {false}
 
 
 pub fn handle_cli() {
-    let args = Args::parse();
+    let args = args::Args::parse();
     if args.pipe {
         handle_pipe(args);
         return;
@@ -241,7 +194,7 @@ pub fn handle_cli() {
 }
 
 fn handle_pipe(
-    args: Args
+    args: args::Args
 ) {
     use std::io::{self, BufReader, BufWriter};
 
