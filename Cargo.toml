@@ -16,7 +16,7 @@ path = "src/lib/lib.rs"
 [[bin]]
 name = "fb2epub"
 path = "src/main.rs"
-required-features = ["bin-deps"]
+required-features = ["cli"]
 
 [dependencies]
 base64 = "0.22.1"
@@ -30,5 +30,5 @@ threadpool = { version = "1.8.1", optional = true }
 
 [features]
 default = ["zip"]
-bin-deps = ["dep:clap", "dep:indicatif", "dep:threadpool"]
-zip = ["dep:zip", "bin-deps"]
+cli = ["dep:clap", "dep:indicatif", "dep:threadpool"]
+zip = ["dep:zip", "cli"]
