@@ -48,7 +48,7 @@ pub fn convert_archive(
     }
 
     if files.len() == 1 {
-        return crate::run(
+        return super::run(
             &files[0],
             output,
             styles_path,
@@ -74,7 +74,7 @@ pub fn convert_archive(
                 else {continue};
 
         let file_output = output.join(file_name);
-        crate::run(
+        super::run(
             file,
             &file_output,
             styles_path,
