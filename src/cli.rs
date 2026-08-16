@@ -43,7 +43,7 @@ pub fn handle_cli() {
         panic!("There's no fb2 books in the input!")
     };
 
-    if let Some(p) = &args.output &&  !p.is_dir() {
+    if let Some(p) = &args.output && inputs.len() > 1 && !p.is_dir() {
         if p.is_file() {
             let result = fs::remove_file(p);
             if let Err(err) = result {
