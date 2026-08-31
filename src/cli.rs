@@ -64,11 +64,25 @@ pub fn handle_cli() {
         }
     } else {
         if let Some(o) = args.output {
-            vec![o]
+            if o.is_dir() {
+                let input_path = &inputs[0];
+                let stem = input_path
+                    .file_stem()
+                    .expect("Cannot get output path!")
+                    .to_string_lossy()
+                    .to_string();
+                let parent = o;
+                let p = get_free_path(&stem, "epub", &parent, &[]);
+
+                vec![p]
+
+            } else {
+                vec![o]
+            }
         } else {
             match get_out_path(&inputs[0], &[]) {
                 Some(o) => vec![o],
-                None => panic!("Error while getting output path for: {:#?}", &inputs[0]),
+                None => panic!("Error while getting output path for: {:#?}", inputs[0]),
             }
         }
     };
