@@ -22,6 +22,9 @@
 				buildInputs = with pkgs; [
 					rustc
 					cargo
+
+					clippy
+					rust-analyzer
 				];
 
 				shellHook = ''
