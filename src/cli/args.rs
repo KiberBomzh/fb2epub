@@ -6,9 +6,8 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// Input files. Can be a file or a directory. Also you can use it many times
-    #[arg(short, long, num_args = 1..)]
-    pub input: Vec<PathBuf>,
+    /// Input files/dirs.
+    pub inputs: Vec<PathBuf>,
     
     /// Output path. Directory. If there's only one input book also can be a file.
     #[arg(short, long)]
@@ -18,7 +17,7 @@ pub struct Args {
     #[arg(long)]
     pub styles: Option<PathBuf>,
     
-    /// Include all books from subdirs of given in --input directory.
+    /// Include all books from subdirs of given in inputs directory/directories.
     #[arg(short, long)]
     pub recursive: bool,
 

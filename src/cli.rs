@@ -38,7 +38,7 @@ pub fn handle_cli() {
     }
 
 
-    let mut inputs = get_inputs(args.input, args.recursive);
+    let mut inputs = get_inputs(args.inputs, args.recursive);
     if inputs.is_empty() {
         panic!("There's no fb2 books in the input!")
     };
