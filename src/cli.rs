@@ -96,13 +96,7 @@ pub fn handle_cli() {
     }
 
     
-    let styles_path: Option<PathBuf> = args.styles.and_then(|p| {
-        if p.is_file() {
-            Some(p)
-        } else {
-            None
-        }
-    });
+    let styles_path: Option<PathBuf> = args.styles.filter(|p| p.is_file());
 
     let metadata = parse_meta_from_args(
         args.title,
