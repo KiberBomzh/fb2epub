@@ -24,12 +24,12 @@ epub-builder = "0.8.2"
 quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24.0"
 zip = { version = "7.0.0", optional = true }
-clap = { version = "4.5.53", features = ["derive"], optional = true }
 indicatif = { version = "0.18.3", optional = true }
 threadpool = { version = "1.8.1", optional = true }
+lexopt = "0.3.2"
 
 [features]
 default = ["zip"]
 pipe = []
-cli = ["dep:clap", "dep:indicatif", "dep:threadpool", "pipe"]
+cli = [ "dep:indicatif", "dep:threadpool", "pipe"]
 zip = ["dep:zip", "cli"]

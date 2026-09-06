@@ -9,7 +9,6 @@ use std::fs;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use threadpool::ThreadPool;
-use clap::Parser;
 
 
 #[cfg(feature = "zip")]
@@ -31,7 +30,10 @@ fn is_windows() -> bool {false}
 
 
 pub fn handle_cli() {
-    let args = args::Args::parse();
+    let args = match args::Args::parse() {
+        Ok(args) => args,
+        Err(err) => panic!("Error while parsing cli args: {err}"),
+    };
     if args.pipe {
         handle_pipe(args);
         return;
@@ -100,7 +102,7 @@ pub fn handle_cli() {
 
     let metadata = parse_meta_from_args(
         args.title,
-        args.author,
+        args.authors,
         args.language,
         args.series,
         args.series_index,
@@ -215,7 +217,7 @@ fn handle_pipe(
 
     let metadata = parse_meta_from_args(
         args.title,
-        args.author,
+        args.authors,
         args.language,
         args.series,
         args.series_index,

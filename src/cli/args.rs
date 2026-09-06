@@ -1,52 +1,133 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const NAME: &str = env!("CARGO_PKG_NAME");
+const HELP_MSG: &str = r#"Converter from fb2 to epub
+
+Usage: fb2epub [OPTIONS] [INPUTS]...
+
+Arguments:
+  [INPUTS]...  Input files/dirs
+
+Options:
+  -o, --output <OUTPUT>              Output path. Directory. If there's only one input also can be a file
+      --styles <STYLES>              Custom css styles for a book. Path to a .css file
+  -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
+  -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
+      --debug                        Use debug mod
+      --title <TITLE>                Use given title for input book(s)
+      --author <AUTHOR>...           Use given author(s) for input book(s)
+      --language <LANGUAGE>          Use given language for input book(s)
+      --series <SERIES>              Use given series for input book(s)
+      --series-index <SERIES_INDEX>  Use given series index for input book(s)
+  -h, --help                         Print help
+  -V, --version                      Print version"#;
 
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
 pub struct Args {
-    /// Input files/dirs.
     pub inputs: Vec<PathBuf>,
-    
-    /// Output path. Directory. If there's only one input book also can be a file.
-    #[arg(short, long)]
     pub output: Option<PathBuf>,
-    
-    /// Custom css styles for a book. Path to a .css file
-    #[arg(long)]
     pub styles: Option<PathBuf>,
-    
-    /// Include all books from subdirs of given in inputs directory/directories.
-    #[arg(short, long)]
+
     pub recursive: bool,
-
-    /// Read input (only fb2) from stdin, write epub in stdout.
-    #[arg(short, long)]
     pub pipe: bool,
-
-    /// Use debug mod
-    #[arg(long)]
     pub debug: bool,
 
-
-    /// Use given title for input book(s)
-    #[arg(long)]
     pub title: Option<String>,
-
-    /// Use given author(s) for input book(s)
-    #[arg(long, num_args = 1..)]
-    pub author: Option<Vec<String>>,
-
-    /// Use given language for input book(s)
-    #[arg(long)]
+    pub authors: Option<Vec<String>>,
     pub language: Option<String>,
-
-    /// Use given series for input book(s)
-    #[arg(long)]
     pub series: Option<String>,
-
-    /// Use given series index for input book(s)
-    #[arg(long)]
     pub series_index: Option<String>
+}
+
+impl Args {
+    #[allow(clippy::bool_comparison)]
+    pub fn parse() -> Result<Self, lexopt::Error> {
+        use lexopt::prelude::*;
+
+        let mut inputs = Vec::new();
+        let mut output = None;
+        let mut styles = None;
+
+        let mut recursive = false;
+        let mut pipe = false;
+        let mut debug = false;
+
+        let mut title = None;
+        let mut authors_some = Vec::new();
+        let mut language = None;
+        let mut series = None;
+        let mut series_index = None;
+
+        let mut parser = lexopt::Parser::from_env();
+        while let Some(arg) = parser.next()? {
+            match arg {
+                Value(v) => {
+                    let p = PathBuf::from(v.string()?);
+                    inputs.push(p);
+                },
+                Short('o') | Long("output") if output.is_none() => {
+                    let v = parser.value()?.string()?;
+                    let p = PathBuf::from(v);
+                    output = Some(p);
+                },
+                Short('s') | Long("styles") if styles.is_none() => {
+                    let v = parser.value()?.string()?;
+                    let p = PathBuf::from(v);
+                    styles = Some(p);
+                },
+
+                Short('r') | Long("recursive") if recursive == false =>
+                    recursive = true,
+                Short('p') | Long("pipe") if pipe == false =>
+                    pipe = true,
+                Long("debug") if debug == false =>
+                    debug = true,
+
+                Long("title") if title.is_none() => {
+                    let v = parser.value()?.string()?;
+                    title = Some(v);
+                },
+                Long("author") => {
+                    let v = parser.value()?.string()?;
+                    authors_some.push(v);
+                },
+                Long("language") if language.is_none() => {
+                    let v = parser.value()?.string()?;
+                    language = Some(v);
+                },
+                Long("series") if series.is_none() => {
+                    let v = parser.value()?.string()?;
+                    series = Some(v);
+                },
+                Long("series-index") if series_index.is_none() => {
+                    let v = parser.value()?.string()?;
+                    series_index = Some(v);
+                },
+
+                Short('h') | Long("help") => {
+                    println!("{HELP_MSG}");
+                    std::process::exit(0);
+                },
+                Short('V') | Long("version") => {
+                    println!("{NAME} {VERSION}");
+                    std::process::exit(0);
+                },
+
+                _ => return Err(arg.unexpected()),
+            }
+        }
+
+        let authors = 
+            if authors_some.is_empty() { None }
+            else { Some(authors_some) };
+
+
+        Ok(
+            Self{inputs, output, styles, recursive, pipe, debug,
+                title, authors, language, series, series_index
+            }
+        )
+    }
 }
