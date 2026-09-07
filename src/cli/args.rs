@@ -3,9 +3,8 @@ use std::path::PathBuf;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NAME: &str = env!("CARGO_PKG_NAME");
-const HELP_MSG: &str = r#"Converter from fb2 to epub
-
-Usage: fb2epub [OPTIONS] [INPUTS]...
+const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+const HELP_MSG: &str = r#"Usage: fb2epub [OPTIONS] [INPUTS]...
 
 Arguments:
   [INPUTS]...  Input files/dirs
@@ -107,7 +106,7 @@ impl Args {
                 },
 
                 Short('h') | Long("help") => {
-                    println!("{HELP_MSG}");
+                    println!("{DESCRIPTION}\n\n{HELP_MSG}");
                     std::process::exit(0);
                 },
                 Short('V') | Long("version") => {
