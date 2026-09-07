@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum CliError {
     ParseArgs(lexopt::Error),
-    Converting(Box<dyn Error>),
+    Converting(fb2epub::Error),
     EmptyInput,
     OutputSetting(std::io::Error),
     InputsOutputsLen,
@@ -18,7 +18,7 @@ impl Error for CliError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::ParseArgs(e) => Some(e),
-            // CliError::Converting(e) => Some(e),
+            CliError::Converting(e) => Some(e),
             Self::OutputSetting(e) => Some(e),
 
             #[cfg(feature = "zip")]
@@ -28,6 +28,11 @@ impl Error for CliError {
     }
 }
 
+impl From<fb2epub::Error> for CliError {
+    fn from(err: fb2epub::Error) -> Self {
+        Self::Converting(err)
+    }
+}
 impl From<lexopt::Error> for CliError {
     fn from(err: lexopt::Error) -> Self {
         Self::ParseArgs(err)

@@ -6,7 +6,7 @@ use std::fmt;
 pub enum ZipReaderError {
     Io(std::io::Error),
     Zip(zip::result::ZipError),
-    Fb2Epub(Box<dyn Error>),
+    Cli(Box<crate::cli::error::CliError>),
 }
 
 impl Error for ZipReaderError {
@@ -14,7 +14,7 @@ impl Error for ZipReaderError {
         match self {
             Self::Io(e) => Some(e),
             Self::Zip(e) => Some(e),
-            _ => None,
+            Self::Cli(e) => Some(e),
         }
     }
 }
@@ -35,7 +35,7 @@ impl fmt::Display for ZipReaderError {
         let s = match self {
             Self::Io(err) => format!("ZipReader io error: {err}"),
             Self::Zip(err) => format!("Error while extracting zip: {err}"),
-            Self::Fb2Epub(err) => format!("Converting error: {err}"),
+            Self::Cli(err) => err.to_string(),
         };
 
         write!(f, "{s}")

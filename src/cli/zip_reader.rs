@@ -64,7 +64,7 @@ pub fn convert_archive(
             metadata,
             suspend_error_messages,
             debug
-        ).map_err(Error::Fb2Epub);
+        ).map_err(|err| Error::Cli(Box::new(err)));
     };
 
     if output.is_file() {

@@ -23,10 +23,10 @@ pub struct Metadata {
 }
 
 
-pub fn metadata_reader<R>(
+pub fn metadata_reader<R: BufRead>(
     xml_reader: &mut Reader<R>,
     buf: &mut Vec<u8>
-) -> Result<Metadata, Box<dyn std::error::Error>> where R: BufRead {
+) -> Result<Metadata, quick_xml::errors::Error>{
     let decoder = xml_reader.decoder();
     let mut meta = Metadata {
         title: String::new(),
@@ -190,7 +190,7 @@ pub fn metadata_reader<R>(
             
             Ok(Event::Eof) => break,
             
-            Err(e) => return Err(Box::new(e)),
+            Err(err) => return Err(err),
             
             _ => {}
         }

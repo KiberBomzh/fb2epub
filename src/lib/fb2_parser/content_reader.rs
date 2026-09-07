@@ -70,13 +70,13 @@ pub struct Section {
 }
 
 
-pub fn content_reader<R>(
+pub fn content_reader<R: BufRead>(
         b_data: &mut super::BookData,
         xml_reader: &mut Reader<R>,
         buf: &mut Vec<u8>, 
         body_name: Option<String>,
         mut sections_counter: usize
-    ) -> Result<(), Box<dyn std::error::Error>> where R: BufRead {
+    ) -> Result<(), String> {
 
     let decoder = xml_reader.decoder();
     let mut sections: Vec<Section> = Vec::new();
@@ -411,7 +411,7 @@ pub fn content_reader<R>(
             
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode()?
+                    .decode().map_err(|err| err.to_string())?
                     .into_owned();
                 
                 if !text.trim().is_empty() {
@@ -456,7 +456,7 @@ pub fn content_reader<R>(
             
             Ok(Event::Eof) => break,
             
-            Err(e) => return Err(Box::new(e)),
+            Err(err) => return Err(err.to_string()),
             
             _ => {}
         }

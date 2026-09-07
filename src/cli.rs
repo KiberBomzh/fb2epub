@@ -179,7 +179,7 @@ pub fn handle_cli() -> Result<(), CliError> {
                 args.debug
             ) {
                 Ok(_) => println!("Saved to {:#?}", file.1),
-                Err(err) => return Err(CliError::Converting(err)),
+                Err(err) => return Err(err),
             }
         } else {
             let file = files.pop()
@@ -197,16 +197,14 @@ pub fn handle_cli() -> Result<(), CliError> {
             sp.enable_steady_tick(std::time::Duration::from_millis(100));
             sp.set_message(file_name.to_owned());
         
-            if let Err(err) = run(
+            run(
                 file.0,
                 file.1,
                 styles_path.as_deref(),
                 metadata,
                 true,
                 args.debug
-            ) {
-                return Err(CliError::Converting(err));
-            };
+            )?;
             
             sp.finish_and_clear();
         }
@@ -218,7 +216,7 @@ pub fn handle_cli() -> Result<(), CliError> {
 
 fn handle_pipe(
     args: args::Args
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), fb2epub::Error> {
     use std::io::{self, BufReader, BufWriter};
 
 
@@ -255,7 +253,7 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), CliError> {
     #[cfg(feature = "zip")]
     if input
         .as_ref()
@@ -264,16 +262,14 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
             s.to_string_lossy().to_lowercase().as_str() == "zip"
         )
     {
-        zip_reader::convert_archive(
+        return zip_reader::convert_archive(
             input.as_ref(),
             output.as_ref(),
             styles_path,
             metadata,
             suspend_error_messages,
             debug
-        )?;
-
-        return Ok(())
+        ).map_err(CliError::ZipReader)
     };
 
 
@@ -295,7 +291,7 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     }
 
 
-    result
+    result.map_err(CliError::Converting)
 }
 
 

@@ -1,5 +1,8 @@
 mod fb2_parser;
 mod epub_creator;
+mod error;
+
+pub use error::Fb2EpubError as Error;
 
 
 use std::path::Path;
@@ -59,9 +62,9 @@ pub fn convert<R: BufRead, W: Write>(
     metadata: Option<Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     // Чтение входного FB2
-    let mut data = fb2_parser::parse(reader)?;
+    let mut data = fb2_parser::parse(reader).map_err(Error::Fb2Parser)?;
     if debug {
         print_sections(&data.content, false);
     }
@@ -103,7 +106,12 @@ pub fn convert<R: BufRead, W: Write>(
     };
     
     // Создание EPUB
-    epub_creator::create_epub(&mut data, writer, styles_path, suspend_error_messages)?;
+    epub_creator::create_epub(
+        &mut data,
+        writer,
+        styles_path,
+        suspend_error_messages
+    ).map_err(Error::EpubCreator)?;
 
 
     Ok(())

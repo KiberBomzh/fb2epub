@@ -79,14 +79,14 @@ pub fn get_counter_str(c: usize) -> String {
 
 
 pub fn parse<R: BufRead>(reader: R,
-) -> Result<BookData, Box<dyn std::error::Error>> {
+) -> Result<BookData, String> {
     let mut xml_reader = Reader::from_reader(reader);
     let mut buf = Vec::new();
     let sections_counter = 0;
     
     
     let mut data = BookData {
-        meta: metadata_reader(&mut xml_reader, &mut buf)?,
+        meta: metadata_reader(&mut xml_reader, &mut buf).map_err(|err| err.to_string())?,
         content: Vec::new(),
         images: HashMap::new(),
         link_map: HashMap::new()
