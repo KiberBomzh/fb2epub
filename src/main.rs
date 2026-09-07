@@ -8,7 +8,9 @@ fn main() {
     handle_pipe();
 
     #[cfg(feature = "cli")]
-    cli::handle_cli();
+    if let Err(err) = cli::handle_cli() {
+        eprintln!("{err}");
+    }
 }
 
 #[cfg(not(feature = "cli"))]

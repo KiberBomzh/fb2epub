@@ -2,6 +2,7 @@
 mod zip_reader;
 
 mod args;
+mod error;
 
 
 use std::path::{PathBuf, Path};
@@ -9,6 +10,8 @@ use std::fs;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use threadpool::ThreadPool;
+
+use error::CliError;
 
 
 #[cfg(feature = "zip")]
@@ -29,57 +32,49 @@ fn is_windows() -> bool {true}
 fn is_windows() -> bool {false}
 
 
-pub fn handle_cli() {
-    let args = match args::Args::parse() {
-        Ok(args) => args,
-        Err(err) => panic!("Error while parsing cli args: {err}"),
-    };
+
+pub fn handle_cli() -> Result<(), CliError> {
+    let args = args::Args::parse()?;
+
     if args.pipe {
-        handle_pipe(args);
-        return;
+        return handle_pipe(args)
+            .map_err(CliError::Converting);
     }
 
 
-    let mut inputs = get_inputs(args.inputs, args.recursive);
+    let mut inputs = get_inputs(args.inputs, args.recursive)?;
     if inputs.is_empty() {
-        panic!("There's no fb2 books in the input!")
+        return Err(CliError::EmptyInput);
     };
 
     // It needed only if output dir isn't exists
     if let Some(o) = &args.output && inputs.len() > 1 && !is_dir(o) {
         let p = PathBuf::from(o);
         if p.is_file() {
-            let result = fs::remove_file(&p);
-            if let Err(err) = result {
-                panic!("Error while setting output path: {err}")
-            }
+            fs::remove_file(&p)?;
         }
 
-        let result = fs::create_dir_all(p);
-        if let Err(err) = result {
-            panic!("Error while setting output path: {err}")
-        }
+        fs::create_dir_all(p)?;
     }
 
     let mut outputs: Vec<PathBuf> = if inputs.len() > 1 {
-        match get_outputs(&inputs, args.output) {
-            Ok(result) => result,
-            Err(err) => panic!("Error while getting output path: {err}"),
-        }
+        get_outputs(&inputs, args.output)?
     } else {
         if let Some(o) = &args.output {
             let p = PathBuf::from(o);
             if p.is_dir() || (o.ends_with("/") || o.ends_with("\\")) {
                 if !p.is_dir() {
                     if p.exists() {
-                        fs::remove_file(&p).expect("Cannot set output path!");
+                        fs::remove_file(&p)?;
                     }
-                    fs::create_dir_all(&p).expect("Cannot set output path!");
+                    fs::create_dir_all(&p)?;
                 }
                 let input_path = &inputs[0];
                 let stem = input_path
                     .file_stem()
-                    .expect("Cannot get output path!")
+                    .ok_or(CliError::OutputSetting(
+                        std::io::Error::other("Cannot get output path!")
+                    ))?
                     .to_string_lossy()
                     .to_string();
                 let parent = p;
@@ -89,21 +84,21 @@ pub fn handle_cli() {
 
             } else {
                 if let Some(parent) = p.parent() {
-                    fs::create_dir_all(parent).expect("Cannot set output path!");
+                    fs::create_dir_all(parent)?;
                 }
 
                 vec![p]
             }
         } else {
-            match get_out_path(&inputs[0], &[]) {
-                Some(o) => vec![o],
-                None => panic!("Error while getting output path for: {:#?}", inputs[0]),
-            }
+            vec![ get_out_path(&inputs[0], &[]).ok_or(CliError::OutputSetting(
+                    std::io::Error::other("Cannot get output path!")
+                ))?
+            ]
         }
     };
 
     if inputs.len() != outputs.len() {
-        panic!("Error while getting output path: inputs.len() and outputs.len() doesnt match!");
+        return Err(CliError::InputsOutputsLen)
     }
     let mut files: Vec<(PathBuf, PathBuf)> = Vec::with_capacity(inputs.len());
     while let Some(i) = inputs.pop() && let Some(o) = outputs.pop() {
@@ -122,6 +117,8 @@ pub fn handle_cli() {
     );
 
 
+    const CONVERTING_ERROR_MSG: &str = "Error while converting";
+
     if files.len() > 1 {
         let pool = ThreadPool::new(10);
 
@@ -139,7 +136,7 @@ pub fn handle_cli() {
                         args.debug
                     ) {
                         Ok(_) => println!("Saved to {:#?}", file.1),
-                        Err(err) => eprintln!("Error while converting {:#?}: {err}", file.0)
+                        Err(err) => eprintln!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0)
                     }
                 });
             }
@@ -160,7 +157,7 @@ pub fn handle_cli() {
                         args.debug
                     ) {
                         Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
-                        Err(err) => bar.println(format!("Error while converting {:#?}: {err}", file.0))
+                        Err(err) => bar.println(format!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0))
                     };
                     bar.inc(1);
                 });
@@ -182,7 +179,7 @@ pub fn handle_cli() {
                 args.debug
             ) {
                 Ok(_) => println!("Saved to {:#?}", file.1),
-                Err(err) => panic!("Converting error: {err}")
+                Err(err) => return Err(CliError::Converting(err)),
             }
         } else {
             let file = files.pop()
@@ -208,17 +205,20 @@ pub fn handle_cli() {
                 true,
                 args.debug
             ) {
-                panic!("Converting error: {err}")
+                return Err(CliError::Converting(err));
             };
             
             sp.finish_and_clear();
         }
     }
+
+
+    Ok(())
 }
 
 fn handle_pipe(
     args: args::Args
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::{self, BufReader, BufWriter};
 
 
@@ -238,18 +238,14 @@ fn handle_pipe(
 
     let reader = BufReader::new(io::stdin());
     let writer = BufWriter::new(io::stdout());
-    let result = fb2epub::convert(
+    fb2epub::convert(
         reader,
         writer,
         styles_path.as_deref(),
         metadata,
         false, // suspend_error_messages
         false, // debug
-    );
-
-    if let Err(err) = result {
-        eprintln!("{err}");
-    }
+    )
 }
 
 fn run<I: AsRef<Path>, O: AsRef<Path>>(
@@ -268,15 +264,14 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
             s.to_string_lossy().to_lowercase().as_str() == "zip"
         )
     {
-        zip_reader::convert_archive(
+        return zip_reader::convert_archive(
             input.as_ref(),
             output.as_ref(),
             styles_path,
             metadata,
             suspend_error_messages,
             debug
-        )?;
-        return Ok(())
+        )
     };
 
 
@@ -330,17 +325,25 @@ fn parse_meta_from_args(
 
 
 
-fn get_inputs(inputs: Vec<PathBuf>, recursive: bool) -> Vec<PathBuf> {
+fn get_inputs(inputs: Vec<PathBuf>, recursive: bool) -> Result<Vec<PathBuf>, std::io::Error> {
     let mut files: Vec<PathBuf> = Vec::new();
     for path in inputs {
         // Проверки
         if !path.exists() {
-            panic!("There's no such path: {:?}!", path);
+            return Err(
+                std::io::Error::other(
+                    format!("There's no such path: {:?}!", path)
+                )
+            )
         };
         
         if path.is_dir() {
             if let Err(err) = read_dir(&path, &mut files, recursive) {
-                panic!("Error while reading directory {:#?}: {}!", path, err)
+                return Err(
+                    std::io::Error::other(
+                        format!("Error while reading directory {:#?}: {}!", path, err)
+                    )
+                )
             };
             continue
         };
@@ -349,8 +352,9 @@ fn get_inputs(inputs: Vec<PathBuf>, recursive: bool) -> Vec<PathBuf> {
             files.push(path);
         }
     }
-    
-    files
+
+
+    Ok(files)
 }
 fn read_dir(dir: &Path, files: &mut Vec<PathBuf>, recursive: bool) -> std::io::Result<()> {
     let entries = fs::read_dir(dir)?;
@@ -378,7 +382,7 @@ fn is_allowed(path: &Path) -> bool {
 fn get_outputs( // this funcion only needs when inputs.len() > 1
     inputs: &[PathBuf],
     output: Option<String> // if output is some, then it is dir and it is already exists
-) -> Result<Vec<PathBuf>, String> {
+) -> Result<Vec<PathBuf>, std::io::Error> {
     let mut outputs = Vec::new();
     for input in inputs {
         let out = 
@@ -387,7 +391,7 @@ fn get_outputs( // this funcion only needs when inputs.len() > 1
                 get_out_path_with_parent(input, &p, &outputs)
             } else {
                 get_out_path(input, &outputs)
-            }.ok_or(format!("Cannot get output path for {:#?}", input))?;
+            }.ok_or(std::io::Error::other(format!("Cannot get output path for {:#?}", input)))?;
 
         outputs.push(out);
     }
