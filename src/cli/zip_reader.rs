@@ -1,3 +1,8 @@
+mod error;
+
+pub use error::ZipReaderError as Error;
+
+
 use std::fs::{self, File};
 use std::path::{PathBuf, Path};
 use std::io;
@@ -38,13 +43,17 @@ pub fn convert_archive(
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
     debug: bool
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
 
     let files = extract_books(path, temp_path)?;
     if files.is_empty() {
-        return Err(format!("Nothing to convert in {:#?}", path).into())
+        return Err(Error::Io( 
+            std::io::Error::other(
+                format!("Nothing to convert in {:#?}", path)
+            )
+        ))
     }
 
     if files.len() == 1 {
@@ -55,7 +64,7 @@ pub fn convert_archive(
             metadata,
             suspend_error_messages,
             debug
-        );
+        ).map_err(Error::Fb2Epub);
     };
 
     if output.is_file() {
@@ -73,15 +82,19 @@ pub fn convert_archive(
                 .and_then(|s| s.to_str() ) { name.to_string() }
                 else {continue};
 
-        let file_output = output.join(file_name);
-        super::run(
+        let file_output = output.join(&file_name);
+        let result = super::run(
             file,
             &file_output,
             styles_path,
             metadata.clone(),
             suspend_error_messages,
             debug
-        )?;
+        );
+
+        if let Err(err) = result {
+            eprintln!("ZipReader converting error: {err} for {file_name}");
+        }
     };
 
 

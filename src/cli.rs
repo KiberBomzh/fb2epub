@@ -264,14 +264,16 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
             s.to_string_lossy().to_lowercase().as_str() == "zip"
         )
     {
-        return zip_reader::convert_archive(
+        zip_reader::convert_archive(
             input.as_ref(),
             output.as_ref(),
             styles_path,
             metadata,
             suspend_error_messages,
             debug
-        )
+        )?;
+
+        return Ok(())
     };
 
 

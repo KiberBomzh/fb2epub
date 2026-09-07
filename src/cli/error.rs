@@ -9,6 +9,9 @@ pub enum CliError {
     EmptyInput,
     OutputSetting(std::io::Error),
     InputsOutputsLen,
+
+    #[cfg(feature = "zip")]
+    ZipReader(super::zip_reader::Error),
 }
 
 impl Error for CliError {
@@ -17,6 +20,9 @@ impl Error for CliError {
             Self::ParseArgs(e) => Some(e),
             // CliError::Converting(e) => Some(e),
             Self::OutputSetting(e) => Some(e),
+
+            #[cfg(feature = "zip")]
+            Self::ZipReader(e) => Some(e),
             _ => None,
         }
     }
@@ -32,6 +38,12 @@ impl From<std::io::Error> for CliError {
         Self::OutputSetting(err)
     }
 }
+#[cfg(feature = "zip")]
+impl From<super::zip_reader::Error> for CliError {
+    fn from(err: super::zip_reader::Error) -> Self {
+        Self::ZipReader(err)
+    }
+}
 
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -41,6 +53,9 @@ impl fmt::Display for CliError {
             Self::EmptyInput => String::from("There's no fb2 books in the input!"),
             Self::OutputSetting(err) => format!("Error while setting output path: {err}"),
             Self::InputsOutputsLen => String::from("inputs.len() and outputs.len() doesn't match!"),
+
+            #[cfg(feature = "zip")]
+            Self::ZipReader(err) => err.to_string(),
         };
 
         write!(f, "{s}")
