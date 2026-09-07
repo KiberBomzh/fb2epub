@@ -118,7 +118,7 @@ pub fn handle_cli() {
                 let metadata = metadata.clone();
                 pool.execute(move || {
                     match run(
-                        file.0,
+                        &file.0,
                         &file.1,
                         styles_path.as_deref(),
                         metadata,
@@ -126,7 +126,7 @@ pub fn handle_cli() {
                         args.debug
                     ) {
                         Ok(_) => println!("Saved to {:#?}", file.1),
-                        Err(err) => eprintln!("{err}")
+                        Err(err) => eprintln!("Error while converting {:#?}: {err}", file.0)
                     }
                 });
             }
@@ -139,7 +139,7 @@ pub fn handle_cli() {
                 let bar = bar.clone();
                 pool.execute(move || {
                     match run(
-                        file.0,
+                        &file.0,
                         file.1,
                         styles_path.as_deref(),
                         metadata,
@@ -147,7 +147,7 @@ pub fn handle_cli() {
                         args.debug
                     ) {
                         Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
-                        Err(err) => bar.println(format!("{}", err))
+                        Err(err) => bar.println(format!("Error while converting {:#?}: {err}", file.0))
                     };
                     bar.inc(1);
                 });
@@ -169,7 +169,7 @@ pub fn handle_cli() {
                 args.debug
             ) {
                 Ok(_) => println!("Saved to {:#?}", file.1),
-                Err(err) => eprintln!("{err}")
+                Err(err) => panic!("Converting error: {err}")
             }
         } else {
             let file = files.pop()
@@ -195,7 +195,7 @@ pub fn handle_cli() {
                 true,
                 args.debug
             ) {
-                eprintln!("{err}")
+                panic!("Converting error: {err}")
             };
             
             sp.finish_and_clear();
@@ -270,19 +270,22 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     let file = fs::File::open(input)?;
     let reader = std::io::BufReader::new(file);
 
-    let file = fs::File::create(output)?;
+    let file = fs::File::create(output.as_ref())?;
     let writer = std::io::BufWriter::new(file);
-    fb2epub::convert(
+    let result = fb2epub::convert(
         reader,
         writer,
         styles_path,
         metadata,
         suspend_error_messages,
         debug
-    )?;
+    );
+    if result.is_err() {
+        fs::remove_file(output)?;
+    }
 
 
-    Ok(())
+    result
 }
 
 
