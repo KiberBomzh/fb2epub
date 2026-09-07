@@ -45,9 +45,11 @@ pub fn handle_cli() {
         panic!("There's no fb2 books in the input!")
     };
 
-    if let Some(p) = &args.output && inputs.len() > 1 && !p.is_dir() {
+    // It needed only if output dir isn't exists
+    if let Some(o) = &args.output && inputs.len() > 1 && !is_dir(o) {
+        let p = PathBuf::from(o);
         if p.is_file() {
-            let result = fs::remove_file(p);
+            let result = fs::remove_file(&p);
             if let Err(err) = result {
                 panic!("Error while setting output path: {err}")
             }
@@ -65,21 +67,32 @@ pub fn handle_cli() {
             Err(err) => panic!("Error while getting output path: {err}"),
         }
     } else {
-        if let Some(o) = args.output {
-            if o.is_dir() {
+        if let Some(o) = &args.output {
+            let p = PathBuf::from(o);
+            if p.is_dir() || (o.ends_with("/") || o.ends_with("\\")) {
+                if !p.is_dir() {
+                    if p.exists() {
+                        fs::remove_file(&p).expect("Cannot set output path!");
+                    }
+                    fs::create_dir_all(&p).expect("Cannot set output path!");
+                }
                 let input_path = &inputs[0];
                 let stem = input_path
                     .file_stem()
                     .expect("Cannot get output path!")
                     .to_string_lossy()
                     .to_string();
-                let parent = o;
+                let parent = p;
                 let p = get_free_path(&stem, "epub", &parent, &[]);
 
                 vec![p]
 
             } else {
-                vec![o]
+                if let Some(parent) = p.parent() {
+                    fs::create_dir_all(parent).expect("Cannot set output path!");
+                }
+
+                vec![p]
             }
         } else {
             match get_out_path(&inputs[0], &[]) {
@@ -364,13 +377,14 @@ fn is_allowed(path: &Path) -> bool {
 
 fn get_outputs( // this funcion only needs when inputs.len() > 1
     inputs: &[PathBuf],
-    output: Option<PathBuf> // if output is some, then it is dir and it is already exists
+    output: Option<String> // if output is some, then it is dir and it is already exists
 ) -> Result<Vec<PathBuf>, String> {
     let mut outputs = Vec::new();
     for input in inputs {
         let out = 
-            if let Some(p) = &output { 
-                get_out_path_with_parent(input, p, &outputs)
+            if let Some(o) = &output { 
+                let p = PathBuf::from(o);
+                get_out_path_with_parent(input, &p, &outputs)
             } else {
                 get_out_path(input, &outputs)
             }.ok_or(format!("Cannot get output path for {:#?}", input))?;
@@ -416,3 +430,5 @@ fn get_free_path(
 
     path
 }
+
+fn is_dir(s: &str) -> bool { PathBuf::from(s).is_dir() }

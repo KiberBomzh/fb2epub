@@ -26,7 +26,7 @@ Options:
 
 pub struct Args {
     pub inputs: Vec<PathBuf>,
-    pub output: Option<PathBuf>,
+    pub output: Option<String>,
     pub styles: Option<PathBuf>,
 
     pub recursive: bool,
@@ -68,8 +68,7 @@ impl Args {
                 },
                 Short('o') | Long("output") if output.is_none() => {
                     let v = parser.value()?.string()?;
-                    let p = PathBuf::from(v);
-                    output = Some(p);
+                    output = Some(v);
                 },
                 Short('s') | Long("styles") if styles.is_none() => {
                     let v = parser.value()?.string()?;
