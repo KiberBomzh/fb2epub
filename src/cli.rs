@@ -94,7 +94,7 @@ fn handle_converting(
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
 
     if files.len() > 1 {
-        let pool = ThreadPool::new(10);
+        let pool = ThreadPool::new(5);
         let bar = ProgressBar::new(files.len().try_into().unwrap());
 
         while let Some(file) = files.pop() {
@@ -159,7 +159,7 @@ fn handle_converting(
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
 
     if files.len() > 1 {
-        let pool = ThreadPool::new(10);
+        let pool = ThreadPool::new(5);
 
         while let Some(file) = files.pop() {
             let styles_path = styles_path.clone();
