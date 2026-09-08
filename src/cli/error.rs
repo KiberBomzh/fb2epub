@@ -7,8 +7,10 @@ pub enum CliError {
     ParseArgs(lexopt::Error),
     Converting(fb2epub::Error),
     EmptyInput,
-    OutputSetting(std::io::Error),
-    InputsOutputsLen,
+    GetInput(std::io::Error),
+    SetOutput(std::io::Error),
+    GetOutput(std::io::Error),
+    Other(String),
 
     #[cfg(feature = "zip")]
     ZipReader(super::zip_reader::Error),
@@ -19,7 +21,9 @@ impl Error for CliError {
         match self {
             Self::ParseArgs(e) => Some(e),
             CliError::Converting(e) => Some(e),
-            Self::OutputSetting(e) => Some(e),
+            Self::GetInput(e) => Some(e),
+            Self::SetOutput(e) => Some(e),
+            Self::GetOutput(e) => Some(e),
 
             #[cfg(feature = "zip")]
             Self::ZipReader(e) => Some(e),
@@ -38,9 +42,9 @@ impl From<lexopt::Error> for CliError {
         Self::ParseArgs(err)
     }
 }
-impl From<std::io::Error> for CliError {
-    fn from(err: std::io::Error) -> Self {
-        Self::OutputSetting(err)
+impl From<String> for CliError {
+    fn from(err: String) -> Self {
+        Self::Other(err)
     }
 }
 #[cfg(feature = "zip")]
@@ -56,8 +60,10 @@ impl fmt::Display for CliError {
             Self::ParseArgs(err) => format!("Error while parsing cli args: {err}"),
             Self::Converting(err) => format!("Converting error: {err}"),
             Self::EmptyInput => String::from("There's no fb2 books in the input!"),
-            Self::OutputSetting(err) => format!("Error while setting output path: {err}"),
-            Self::InputsOutputsLen => String::from("inputs.len() and outputs.len() doesn't match!"),
+            Self::GetInput(err) => format!("Error while getting inputs: {err}"),
+            Self::SetOutput(err) => format!("Error while setting output: {err}"),
+            Self::GetOutput(err) => format!("Error while getting output: {err}"),
+            Self::Other(err) => err.clone(),
 
             #[cfg(feature = "zip")]
             Self::ZipReader(err) => err.to_string(),

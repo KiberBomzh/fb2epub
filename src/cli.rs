@@ -5,11 +5,13 @@ mod args;
 mod error;
 
 
-use std::path::{PathBuf, Path};
+use std::path::{PathBuf, Path, MAIN_SEPARATOR};
 use std::fs;
 
-use indicatif::{ProgressBar, ProgressStyle};
 use threadpool::ThreadPool;
+
+#[cfg(not(target_os = "windows"))]
+use indicatif::{ProgressBar, ProgressStyle};
 
 use error::CliError;
 
@@ -25,14 +27,6 @@ const ALLOWED_EXTENSIONS: [&str; 1] = [
 ];
 
 
-#[cfg(target_os = "windows")]
-fn is_windows() -> bool {true}
-
-#[cfg(not(target_os = "windows"))]
-fn is_windows() -> bool {false}
-
-
-
 pub fn handle_cli() -> Result<(), CliError> {
     let args = args::Args::parse()?;
 
@@ -42,63 +36,25 @@ pub fn handle_cli() -> Result<(), CliError> {
     }
 
 
-    let mut inputs = get_inputs(args.inputs, args.recursive)?;
+    let mut inputs = get_inputs(args.inputs, args.recursive)
+        .map_err(CliError::GetInput)?;
     if inputs.is_empty() {
         return Err(CliError::EmptyInput);
     };
 
-    // It needed only if output dir isn't exists
-    if let Some(o) = &args.output && inputs.len() > 1 && !is_dir(o) {
-        let p = PathBuf::from(o);
-        if p.is_file() {
-            fs::remove_file(&p)?;
-        }
-
-        fs::create_dir_all(p)?;
+    if let Some(o) = &args.output {
+        set_output(o, inputs.len())
+            .map_err(CliError::SetOutput)?;
     }
 
     let mut outputs: Vec<PathBuf> = if inputs.len() > 1 {
-        get_outputs(&inputs, args.output)?
+        get_outputs(&inputs, args.output)
     } else {
-        if let Some(o) = &args.output {
-            let p = PathBuf::from(o);
-            if p.is_dir() || (o.ends_with("/") || o.ends_with("\\")) {
-                if !p.is_dir() {
-                    if p.exists() {
-                        fs::remove_file(&p)?;
-                    }
-                    fs::create_dir_all(&p)?;
-                }
-                let input_path = &inputs[0];
-                let stem = input_path
-                    .file_stem()
-                    .ok_or(CliError::OutputSetting(
-                        std::io::Error::other("Cannot get output path!")
-                    ))?
-                    .to_string_lossy()
-                    .to_string();
-                let parent = p;
-                let p = get_free_path(&stem, "epub", &parent, &[]);
-
-                vec![p]
-
-            } else {
-                if let Some(parent) = p.parent() {
-                    fs::create_dir_all(parent)?;
-                }
-
-                vec![p]
-            }
-        } else {
-            vec![ get_out_path(&inputs[0], &[]).ok_or(CliError::OutputSetting(
-                    std::io::Error::other("Cannot get output path!")
-                ))?
-            ]
-        }
-    };
+        get_output(&inputs, args.output)
+    }.map_err(CliError::GetOutput)?;
 
     if inputs.len() != outputs.len() {
-        return Err(CliError::InputsOutputsLen)
+        panic!("inputs.len() and outputs.len() doesn't match!");
     }
     let mut files: Vec<(PathBuf, PathBuf)> = Vec::with_capacity(inputs.len());
     while let Some(i) = inputs.pop() && let Some(o) = outputs.pop() {
@@ -117,96 +73,126 @@ pub fn handle_cli() -> Result<(), CliError> {
     );
 
 
+    handle_converting(
+        files,
+        styles_path,
+        metadata,
+        args.debug,
+    )?;
+
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn handle_converting(
+    mut files: Vec<(PathBuf, PathBuf)>,
+    styles_path: Option<PathBuf>,
+    metadata: Option<fb2epub::Metadata>,
+    debug: bool,
+) -> Result<(), CliError> {
+    const CONVERTING_ERROR_MSG: &str = "Error while converting";
+
+    if files.len() > 1 {
+        let pool = ThreadPool::new(10);
+        let bar = ProgressBar::new(files.len().try_into().unwrap());
+
+        while let Some(file) = files.pop() {
+            let styles_path = styles_path.clone();
+            let metadata = metadata.clone();
+            let bar = bar.clone();
+            pool.execute(move || {
+                match run(
+                    &file.0,
+                    file.1,
+                    styles_path.as_deref(),
+                    metadata,
+                    true,
+                    debug
+                ) {
+                    Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
+                    Err(err) => bar.println(format!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0))
+                };
+                bar.inc(1);
+            });
+        }
+
+        pool.join();
+    } else {
+        let file = files.pop()
+            .expect("Vec should have only one element");
+    
+        let file_name = file.0.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Cannot get file name!");
+        
+        let sp = ProgressBar::new_spinner();
+        sp.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} {msg:.green}").unwrap()
+        );
+        sp.enable_steady_tick(std::time::Duration::from_millis(100));
+        sp.set_message(file_name.to_owned());
+    
+        run(
+            file.0,
+            file.1,
+            styles_path.as_deref(),
+            metadata,
+            true,
+            debug
+        )?;
+        
+        sp.finish_and_clear();
+    };
+
+
+    Ok(())
+}
+#[cfg(target_os = "windows")]
+fn handle_converting(
+    mut files: Vec<(PathBuf, PathBuf)>,
+    styles_path: Option<PathBuf>,
+    metadata: Option<fb2epub::Metadata>,
+    debug: bool,
+) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
 
     if files.len() > 1 {
         let pool = ThreadPool::new(10);
 
-        if is_windows() || args.debug {
-            while let Some(file) = files.pop() {
-                let styles_path = styles_path.clone();
-                let metadata = metadata.clone();
-                pool.execute(move || {
-                    match run(
-                        &file.0,
-                        &file.1,
-                        styles_path.as_deref(),
-                        metadata,
-                        true,
-                        args.debug
-                    ) {
-                        Ok(_) => println!("Saved to {:#?}", file.1),
-                        Err(err) => eprintln!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0)
-                    }
-                });
-            }
-        } else {
-            let bar = ProgressBar::new(files.len().try_into().unwrap());
-
-            while let Some(file) = files.pop() {
-                let styles_path = styles_path.clone();
-                let metadata = metadata.clone();
-                let bar = bar.clone();
-                pool.execute(move || {
-                    match run(
-                        &file.0,
-                        file.1,
-                        styles_path.as_deref(),
-                        metadata,
-                        true,
-                        args.debug
-                    ) {
-                        Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
-                        Err(err) => bar.println(format!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0))
-                    };
-                    bar.inc(1);
-                });
-            }
-        };
-
+        while let Some(file) = files.pop() {
+            let styles_path = styles_path.clone();
+            let metadata = metadata.clone();
+            pool.execute(move || {
+                match run(
+                    &file.0,
+                    &file.1,
+                    styles_path.as_deref(),
+                    metadata,
+                    true,
+                    debug
+                ) {
+                    Ok(_) => println!("Saved to {:#?}", file.1),
+                    Err(err) => eprintln!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0)
+                }
+            });
+        }
         pool.join();
     } else {
-        if is_windows() || args.debug {
-            let file = files.pop()
-                .expect("Vec should have only one element");
-    
-            match run(
-                file.0,
-                &file.1,
-                styles_path.as_deref(),
-                metadata,
-                true,
-                args.debug
-            ) {
-                Ok(_) => println!("Saved to {:#?}", file.1),
-                Err(err) => return Err(err),
-            }
-        } else {
-            let file = files.pop()
-                .expect("Vec should have only one element");
-        
-            let file_name = file.0.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Cannot get file name!");
-            
-            let sp = ProgressBar::new_spinner();
-            sp.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner:.green} {msg:.green}").unwrap()
-            );
-            sp.enable_steady_tick(std::time::Duration::from_millis(100));
-            sp.set_message(file_name.to_owned());
-        
-            run(
-                file.0,
-                file.1,
-                styles_path.as_deref(),
-                metadata,
-                true,
-                args.debug
-            )?;
-            
-            sp.finish_and_clear();
+        let file = files.pop()
+            .expect("Vec should have only one element");
+
+        match run(
+            file.0,
+            &file.1,
+            styles_path.as_deref(),
+            metadata,
+            true,
+            debug
+        ) {
+            Ok(_) => println!("Saved to {:#?}", file.1),
+            Err(err) => return Err(err),
         }
     }
 
@@ -273,11 +259,18 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     };
 
 
-    let file = fs::File::open(input)?;
+    let file = fs::File::open(input)
+        .map_err(|err| CliError::Other(err.to_string()))?;
+
     let reader = std::io::BufReader::new(file);
 
-    let file = fs::File::create(output.as_ref())?;
+
+    let file = fs::File::create(output.as_ref())
+        .map_err(|err| CliError::Other(err.to_string()))?;
+
     let writer = std::io::BufWriter::new(file);
+
+
     let result = fb2epub::convert(
         reader,
         writer,
@@ -287,7 +280,8 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
         debug
     );
     if result.is_err() {
-        fs::remove_file(output)?;
+        fs::remove_file(output)
+            .map_err(|err| CliError::Other(err.to_string()))?;
     }
 
 
@@ -376,6 +370,35 @@ fn is_allowed(path: &Path) -> bool {
     )
 }
 
+fn get_output( // this funcion only needs when inputs.len() == 1
+    inputs: &[PathBuf],
+    output: Option<String>, // if output is some and is dir then is is already exists
+) -> Result<Vec<PathBuf>, std::io::Error> {
+    use std::io::Error;
+
+
+    let output = if let Some(o) = &output {
+        let p = PathBuf::from(o);
+
+        if p.is_dir() || o.ends_with(MAIN_SEPARATOR) {
+            let input_path = &inputs[0];
+            let stem = input_path
+                .file_stem()
+                .ok_or(Error::other("Cannot get file name!"))?
+                .to_string_lossy()
+                .to_string();
+            let parent = p;
+
+            get_free_path(&stem, "epub", &parent, &[])
+        } else { p }
+    } else {
+        get_out_path(&inputs[0], &[])
+            .ok_or(Error::other("Cannot get output path!"))?
+    };
+
+
+    Ok(vec![output])
+}
 
 fn get_outputs( // this funcion only needs when inputs.len() > 1
     inputs: &[PathBuf],
@@ -433,4 +456,20 @@ fn get_free_path(
     path
 }
 
-fn is_dir(s: &str) -> bool { PathBuf::from(s).is_dir() }
+fn set_output(output: &str, inputs_len: usize) -> std::io::Result<()> {
+    let output_path = PathBuf::from(output);
+
+    if inputs_len > 1 || output.ends_with(MAIN_SEPARATOR) {
+        if output_path.is_file() {
+            fs::remove_file(&output_path)?;
+        }
+
+        if !output_path.is_dir() {
+            fs::create_dir_all(&output_path)?;
+        }
+    } else if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    Ok(())
+}

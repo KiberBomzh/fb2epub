@@ -24,9 +24,11 @@ epub-builder = "0.8"
 quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24"
 zip = { version = "6", optional = true }
-indicatif = { version = "0.18.3", optional = true }
 threadpool = { version = "1.8.1", optional = true }
 lexopt = "0.3.2"
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+indicatif = { version = "0.18.3", optional = true }
 
 [features]
 default = ["zip"]
