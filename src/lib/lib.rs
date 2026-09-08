@@ -50,11 +50,6 @@ fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
 }
 
 
-/// Main function, takes path to fb2 book (or zip archive), returns path to new epub book.
-///
-/// If replace = true input fb2 book will be deleted.
-///
-/// styles_path is path to custom stylesheet, for default styles use None.
 pub fn convert<R: BufRead, W: Write>(
     reader: R, 
     writer: W,
