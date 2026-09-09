@@ -416,11 +416,8 @@ fn get_output( // this funcion only needs when inputs.len() == 1
 
         if p.is_dir() || o.ends_with(MAIN_SEPARATOR) {
             let input_path = &inputs[0];
-            let stem = input_path
-                .file_stem()
-                .ok_or(Error::other("Cannot get file name!"))?
-                .to_string_lossy()
-                .to_string();
+            let stem = get_stem(input_path)
+                .ok_or(Error::other("Cannot get file name!"))?;
             let parent = p;
 
             get_free_path(&stem, "epub", &parent, &[])
@@ -466,10 +463,7 @@ fn get_out_path_with_parent(
     parent: &Path,
     outputs: &[PathBuf]
 ) -> Option<PathBuf> {
-    let mut stem = input.file_stem()?.to_str()?.to_string();
-    if stem.to_lowercase().ends_with(".fb2") {
-        stem = stem[..stem.len() - 4].to_string();
-    }
+    let stem = get_stem(input)?;
     let ext = "epub";
 
     Some(get_free_path(&stem, ext, parent, outputs))
@@ -506,4 +500,13 @@ fn set_output(output: &str, inputs_len: usize) -> std::io::Result<()> {
     }
 
     Ok(())
+}
+
+fn get_stem(book: &Path) -> Option<String> {
+    let mut stem = book.file_stem()?.to_str()?.to_string();
+    if stem.to_lowercase().ends_with(".fb2") {
+        stem = stem[..stem.len() - 4].to_string();
+    }
+
+    Some(stem)
 }
