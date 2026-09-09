@@ -78,6 +78,8 @@ pub fn handle_cli() -> Result<(), CliError> {
         styles_path,
         metadata,
         args.print,
+
+        #[cfg(debug_assertions)]
         args.debug,
     )?;
 
@@ -91,11 +93,16 @@ fn handle_converting(
     styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
     print_output: bool,
+
+    #[cfg(debug_assertions)]
     debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
     const SPINNER_TEMPLATE: &str = "{spinner:.green} {msg:.green}";
     const BAR_TEMPLATE: &str = "{elapsed_precise} [{wide_bar}] {human_pos}/{human_len} {percent}% ";
+
+    #[cfg(not(debug_assertions))]
+    let debug = false;
 
     fn setup_spinner(file: &Path, sp: &ProgressBar) {
         let file_name = file.file_name()
@@ -185,9 +192,14 @@ fn handle_converting(
     styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
     print_output: bool,
+
+    #[cfg(debug_assertions)]
     debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
+
+    #[cfg(not(debug_assertions))]
+    let debug = false;
 
     if files.len() > 1 {
         let pool = ThreadPool::new(5);

@@ -15,7 +15,6 @@ Options:
   -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
   -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
       --print                        Print output paths
-      --debug                        Use debug mod
       --title <TITLE>                Use given title for input book(s)
       --author <AUTHOR>...           Use given author(s) for input book(s)
       --language <LANGUAGE>          Use given language for input book(s)
@@ -33,6 +32,8 @@ pub struct Args {
     pub recursive: bool,
     pub pipe: bool,
     pub print: bool,
+
+    #[cfg(debug_assertions)]
     pub debug: bool,
 
     pub title: Option<String>,
@@ -54,6 +55,8 @@ impl Args {
         let mut recursive = false;
         let mut pipe = false;
         let mut print = false;
+
+        #[cfg(debug_assertions)]
         let mut debug = false;
 
         let mut title = None;
@@ -85,6 +88,8 @@ impl Args {
                     pipe = true,
                 Long("print") if print == false =>
                     print = true,
+
+                #[cfg(debug_assertions)]
                 Long("debug") if debug == false =>
                     debug = true,
 
@@ -128,8 +133,11 @@ impl Args {
 
 
         Ok(
-            Self{inputs, output, styles, recursive, pipe, print, debug,
-                title, authors, language, series, series_index
+            Self{inputs, output, styles, recursive, pipe, print,
+                title, authors, language, series, series_index,
+
+                #[cfg(debug_assertions)]
+                debug
             }
         )
     }
