@@ -11,7 +11,7 @@ use std::fs;
 use threadpool::ThreadPool;
 
 #[cfg(not(target_os = "windows"))]
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 
 use error::CliError;
 
@@ -77,6 +77,7 @@ pub fn handle_cli() -> Result<(), CliError> {
         files,
         styles_path,
         metadata,
+        args.print,
         args.debug,
     )?;
 
@@ -87,32 +88,67 @@ pub fn handle_cli() -> Result<(), CliError> {
 #[cfg(not(target_os = "windows"))]
 fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
-    styles_path: Option<PathBuf>,
+    styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
+    print_output: bool,
     debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
+    const SPINNER_TEMPLATE: &str = "{spinner:.green} {msg:.green}";
+    const BAR_TEMPLATE: &str = "{elapsed_precise} [{wide_bar}] {human_pos}/{human_len} {percent}% ";
+
+    fn setup_spinner(file: &Path, sp: &ProgressBar) {
+        let file_name = file.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Cannot get file name!");
+
+        sp.set_style(
+            ProgressStyle::default_spinner()
+                .template(SPINNER_TEMPLATE).unwrap()
+        );
+        sp.enable_steady_tick(std::time::Duration::from_millis(100));
+        sp.set_message(file_name.to_owned());
+    }
+
 
     if files.len() > 1 {
         let pool = ThreadPool::new(5);
-        let bar = ProgressBar::new(files.len().try_into().unwrap());
+        let m = MultiProgress::new();
+        let bar = m.add(
+            ProgressBar::new(files.len().try_into().unwrap())
+                .with_style(
+                    ProgressStyle::default_bar()
+                        .template(BAR_TEMPLATE).unwrap()
+                        .progress_chars("=> ")
+                )
+        );
+        let styles = std::sync::Arc::new(styles);
 
         while let Some(file) = files.pop() {
-            let styles_path = styles_path.clone();
-            let metadata = metadata.clone();
             let bar = bar.clone();
+            let sp = m.insert_before(&bar,ProgressBar::new_spinner());
+
+            let styles = styles.clone();
+            let metadata = metadata.clone();
             pool.execute(move || {
+                setup_spinner(&file.0, &sp);
+                bar.tick();
+
                 match run(
                     &file.0,
-                    file.1,
-                    styles_path.as_deref(),
+                    &file.1,
+                    styles.as_deref(),
                     metadata,
                     true,
                     debug
                 ) {
-                    Ok(_) => {}, // bar.println(format!("Saved to {:#?}", o)),
-                    Err(err) => bar.println(format!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0))
+                    Ok(_) => if print_output {
+                        bar.println(format!("Saved to {:#?}", file.1));
+                    },
+                    Err(err) => bar.println(format!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0)),
                 };
+
+                sp.finish_and_clear();
                 bar.inc(1);
             });
         }
@@ -122,27 +158,21 @@ fn handle_converting(
         let file = files.pop()
             .expect("Vec should have only one element");
     
-        let file_name = file.0.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Cannot get file name!");
-        
         let sp = ProgressBar::new_spinner();
-        sp.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} {msg:.green}").unwrap()
-        );
-        sp.enable_steady_tick(std::time::Duration::from_millis(100));
-        sp.set_message(file_name.to_owned());
+        setup_spinner(&file.0, &sp);
     
         run(
             file.0,
-            file.1,
-            styles_path.as_deref(),
+            &file.1,
+            styles.as_deref(),
             metadata,
             true,
             debug
         )?;
-        
+        if print_output {
+            sp.println(format!("Saved to {:#?}", file.1));
+        }
+
         sp.finish_and_clear();
     };
 
@@ -152,28 +182,32 @@ fn handle_converting(
 #[cfg(target_os = "windows")]
 fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
-    styles_path: Option<PathBuf>,
+    styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
+    print_output: bool,
     debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
 
     if files.len() > 1 {
         let pool = ThreadPool::new(5);
+        let styles = std::sync::Arc::new(styles);
 
         while let Some(file) = files.pop() {
-            let styles_path = styles_path.clone();
+            let styles = styles.clone();
             let metadata = metadata.clone();
             pool.execute(move || {
                 match run(
                     &file.0,
                     &file.1,
-                    styles_path.as_deref(),
+                    styles.as_deref(),
                     metadata,
                     true,
                     debug
                 ) {
-                    Ok(_) => println!("Saved to {:#?}", file.1),
+                    Ok(_) => if print_output {
+                        println!("Saved to {:#?}", file.1);
+                    },
                     Err(err) => eprintln!("{CONVERTING_ERROR_MSG} {:#?}: {err}", file.0)
                 }
             });
@@ -183,16 +217,16 @@ fn handle_converting(
         let file = files.pop()
             .expect("Vec should have only one element");
 
-        match run(
+        run(
             file.0,
             &file.1,
-            styles_path.as_deref(),
+            styles.as_deref(),
             metadata,
             true,
             debug
-        ) {
-            Ok(_) => println!("Saved to {:#?}", file.1),
-            Err(err) => return Err(err),
+        )?;
+        if print_output {
+            println!("Saved to {:#?}", file.1);
         }
     }
 

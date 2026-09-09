@@ -14,6 +14,7 @@ Options:
       --styles <STYLES>              Custom css styles for a book. Path to a .css file
   -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
   -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
+      --print                        Print output paths
       --debug                        Use debug mod
       --title <TITLE>                Use given title for input book(s)
       --author <AUTHOR>...           Use given author(s) for input book(s)
@@ -31,6 +32,7 @@ pub struct Args {
 
     pub recursive: bool,
     pub pipe: bool,
+    pub print: bool,
     pub debug: bool,
 
     pub title: Option<String>,
@@ -51,6 +53,7 @@ impl Args {
 
         let mut recursive = false;
         let mut pipe = false;
+        let mut print = false;
         let mut debug = false;
 
         let mut title = None;
@@ -80,6 +83,8 @@ impl Args {
                     recursive = true,
                 Short('p') | Long("pipe") if pipe == false =>
                     pipe = true,
+                Long("print") if print == false =>
+                    print = true,
                 Long("debug") if debug == false =>
                     debug = true,
 
@@ -123,7 +128,7 @@ impl Args {
 
 
         Ok(
-            Self{inputs, output, styles, recursive, pipe, debug,
+            Self{inputs, output, styles, recursive, pipe, print, debug,
                 title, authors, language, series, series_index
             }
         )

@@ -13,6 +13,7 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 - `--styles` `path/to/file.css` - use custom css styles
 - `-r`, `--recursive` - search books as well in subdirectories 
 - `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--output`, `--recursive` arguments will be ignored.
+- `--print` - print output paths
 ### Flags for metadata
 - `--title` - set title for output book
 - `--author` - set authors for output book
