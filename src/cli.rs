@@ -126,7 +126,7 @@ fn handle_converting(
 
         while let Some(file) = files.pop() {
             let bar = bar.clone();
-            let sp = m.insert_before(&bar,ProgressBar::new_spinner());
+            let sp = m.add(ProgressBar::new_spinner());
 
             let styles = styles.clone();
             let metadata = metadata.clone();
