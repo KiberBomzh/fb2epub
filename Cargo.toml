@@ -25,13 +25,12 @@ quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24"
 zip = { version = "6", optional = true }
 threadpool = { version = "1.8.1", optional = true }
+indicatif = { version = "0.18.3", optional = true }
 lexopt = "0.3.2"
 
-[target.'cfg(not(target_os = "windows"))'.dependencies]
-indicatif = { version = "0.18.3", optional = true }
-
 [features]
-default = ["zip"]
+default = ["zip", "spinners"]
 pipe = []
-cli = [ "dep:indicatif", "dep:threadpool", "pipe"]
+cli = [ "dep:threadpool", "pipe"]
+spinners = [ "dep:indicatif", "cli" ]
 zip = ["dep:zip", "cli"]

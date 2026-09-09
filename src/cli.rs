@@ -10,7 +10,7 @@ use std::fs;
 
 use threadpool::ThreadPool;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(feature = "spinners")]
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 
 use error::CliError;
@@ -85,7 +85,7 @@ pub fn handle_cli() -> Result<(), CliError> {
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(feature = "spinners")]
 fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
     styles: Option<PathBuf>,
@@ -179,7 +179,7 @@ fn handle_converting(
 
     Ok(())
 }
-#[cfg(target_os = "windows")]
+#[cfg(not(feature = "spinners"))]
 fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
     styles: Option<PathBuf>,
