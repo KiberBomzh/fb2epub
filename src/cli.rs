@@ -7,6 +7,7 @@ mod error;
 
 use std::path::{PathBuf, Path, MAIN_SEPARATOR};
 use std::fs;
+use std::sync::Arc;
 
 use threadpool::ThreadPool;
 
@@ -129,13 +130,13 @@ fn handle_converting(
                         .progress_chars("=> ")
                 )
         );
-        let styles = std::sync::Arc::new(styles);
+        let styles = Arc::new(styles);
 
         while let Some(file) = files.pop() {
             let bar = bar.clone();
             let sp = m.add(ProgressBar::new_spinner());
 
-            let styles = styles.clone();
+            let styles = Arc::clone(&styles);
             let metadata = metadata.clone();
             pool.execute(move || {
                 setup_spinner(&file.0, &sp);
@@ -203,10 +204,10 @@ fn handle_converting(
 
     if files.len() > 1 {
         let pool = ThreadPool::new(5);
-        let styles = std::sync::Arc::new(styles);
+        let styles = Arc::new(styles);
 
         while let Some(file) = files.pop() {
-            let styles = styles.clone();
+            let styles = Arc::clone(styles);
             let metadata = metadata.clone();
             pool.execute(move || {
                 match run(
