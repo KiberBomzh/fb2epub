@@ -78,6 +78,7 @@ pub fn handle_cli() -> Result<(), CliError> {
         files,
         styles_path,
         metadata,
+        args.threads,
         args.print,
 
         #[cfg(debug_assertions)]
@@ -93,6 +94,7 @@ fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
     styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
+    threads: usize,
     print_output: bool,
 
     #[cfg(debug_assertions)]
@@ -120,7 +122,7 @@ fn handle_converting(
 
 
     if files.len() > 1 {
-        let pool = ThreadPool::new(5);
+        let pool = ThreadPool::new(threads);
         let m = MultiProgress::new();
         let bar = m.add(
             ProgressBar::new(files.len().try_into().unwrap())
@@ -192,6 +194,7 @@ fn handle_converting(
     mut files: Vec<(PathBuf, PathBuf)>,
     styles: Option<PathBuf>,
     metadata: Option<fb2epub::Metadata>,
+    threads: usize,
     print_output: bool,
 
     #[cfg(debug_assertions)]
@@ -203,7 +206,7 @@ fn handle_converting(
     let debug = false;
 
     if files.len() > 1 {
-        let pool = ThreadPool::new(5);
+        let pool = ThreadPool::new(threads);
         let styles = Arc::new(styles);
 
         while let Some(file) = files.pop() {

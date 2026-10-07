@@ -12,6 +12,7 @@ Arguments:
 Options:
   -o, --output <OUTPUT>              Output path. Directory. If there's only one input also can be a file
       --styles <STYLES>              Custom css styles for a book. Path to a .css file
+  -j, --threads                      Set number of threads for converting (thread per a book). Default is 5
   -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
   -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
       --print                        Print output paths
@@ -29,6 +30,7 @@ pub struct Args {
     pub output: Option<String>,
     pub styles: Option<PathBuf>,
 
+    pub threads: usize,
     pub recursive: bool,
     pub pipe: bool,
     pub print: bool,
@@ -52,6 +54,7 @@ impl Args {
         let mut output = None;
         let mut styles = None;
 
+        let mut threads = None;
         let mut recursive = false;
         let mut pipe = false;
         let mut print = false;
@@ -80,6 +83,11 @@ impl Args {
                     let v = parser.value()?.string()?;
                     let p = PathBuf::from(v);
                     styles = Some(p);
+                },
+
+                Short('j') | Long("threads") if threads.is_none() => {
+                    let v = parser.value()?.parse()?;
+                    threads = Some(v);
                 },
 
                 Short('r') | Long("recursive") if recursive == false =>
@@ -131,9 +139,10 @@ impl Args {
             if authors_some.is_empty() { None }
             else { Some(authors_some) };
 
+        let threads = threads.unwrap_or(5);
 
         Ok(
-            Self{inputs, output, styles, recursive, pipe, print,
+            Self{inputs, output, styles, threads, recursive, pipe, print,
                 title, authors, language, series, series_index,
 
                 #[cfg(debug_assertions)]

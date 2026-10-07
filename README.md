@@ -11,6 +11,7 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 ## Flags
 - `-o`, `--output` `path` - output path. If input is one book - can be directory or file name, else - only directory
 - `--styles` `path/to/file.css` - use custom css styles
+- `-j, --threads` - threads for converting (thread per a book). Default is 5
 - `-r`, `--recursive` - search books as well in subdirectories 
 - `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--output`, `--recursive` and `--print` arguments will be ignored.
 - `--print` - print output paths
