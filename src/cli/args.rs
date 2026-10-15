@@ -12,7 +12,7 @@ Arguments:
 Options:
   -o, --output <OUTPUT>              Output path. Directory. If there's only one input also can be a file
       --styles <STYLES>              Custom css styles for a book. Path to a .css file
-  -j, --threads                      Set number of threads for converting (thread per a book). Default is 5
+  -j, --threads                      Set number of threads for converting (thread per a book)
   -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
   -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
       --print                        Print output paths
@@ -54,7 +54,7 @@ impl Args {
         let mut output = None;
         let mut styles = None;
 
-        let mut threads = None;
+        let mut threads: Option<usize> = None;
         let mut recursive = false;
         let mut pipe = false;
         let mut print = false;
@@ -139,7 +139,13 @@ impl Args {
             if authors_some.is_empty() { None }
             else { Some(authors_some) };
 
-        let threads = threads.unwrap_or(5);
+        let threads = match threads {
+            Some(t) => t,
+            None => std::thread::available_parallelism()
+                .ok()
+                .map(|r| r.get())
+                .unwrap_or(5),
+        };
 
         Ok(
             Self{inputs, output, styles, threads, recursive, pipe, print,
