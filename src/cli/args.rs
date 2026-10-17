@@ -16,6 +16,7 @@ Options:
   -r, --recursive                    Include all books from subdirs of given in inputs directory/directories
   -p, --pipe                         Read input (only fb2) from stdin, write epub in stdout
       --print                        Print output paths
+      --remove-input                 Remove input book(s)
       --title <TITLE>                Use given title for input book(s)
       --author <AUTHOR>...           Use given author(s) for input book(s)
       --language <LANGUAGE>          Use given language for input book(s)
@@ -34,6 +35,7 @@ pub struct Args {
     pub recursive: bool,
     pub pipe: bool,
     pub print: bool,
+    pub remove_input: bool,
 
     pub title: Option<String>,
     pub authors: Option<Vec<String>>,
@@ -55,6 +57,7 @@ impl Args {
         let mut recursive = false;
         let mut pipe = false;
         let mut print = false;
+        let mut remove_input = false;
 
         let mut title = None;
         let mut authors_some = Vec::new();
@@ -90,6 +93,8 @@ impl Args {
                     pipe = true,
                 Long("print") if print == false =>
                     print = true,
+                Long("remove-input") if remove_input == false =>
+                    remove_input = true,
 
                 Long("title") if title.is_none() => {
                     let v = parser.value()?.string()?;
@@ -138,7 +143,8 @@ impl Args {
         };
 
         Ok(
-            Self{inputs, output, styles, threads, recursive, pipe, print,
+            Self{inputs, output, styles, threads,
+                recursive, pipe, print, remove_input,
                 title, authors, language, series, series_index,
             }
         )

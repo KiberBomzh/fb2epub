@@ -15,6 +15,7 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 - `-r`, `--recursive` - search books as well in subdirectories 
 - `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--output`, `--recursive` and `--print` arguments will be ignored.
 - `--print` - print output paths
+- `--remove-input` - remove input book(s)
 ### Flags for metadata
 - `--title` - set title for output book
 - `--author` - set authors for output book

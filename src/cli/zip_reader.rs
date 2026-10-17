@@ -42,6 +42,7 @@ pub fn convert_archive(
     styles_path: Option<&Path>,
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
+    remove_input: bool,
 ) -> Result<(), Error> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
@@ -56,13 +57,19 @@ pub fn convert_archive(
     }
 
     if files.len() == 1 {
-        return super::run(
+        let result = super::run(
             &files[0],
             output,
             styles_path,
             metadata,
             suspend_error_messages,
+            false,
         ).map_err(|err| Error::Cli(Box::new(err)));
+
+        if result.is_ok() && remove_input {
+            fs::remove_file(path)?;
+        }
+        return result;
     };
 
     if output.is_file() {
@@ -87,12 +94,16 @@ pub fn convert_archive(
             styles_path,
             metadata.clone(),
             suspend_error_messages,
+            false,
         );
 
         if let Err(err) = result {
             eprintln!("ZipReader converting error: {err} for {file_name}");
         }
     };
+    if remove_input {
+        fs::remove_file(path)?;
+    }
 
 
     Ok(())

@@ -80,6 +80,7 @@ pub fn handle_cli() -> Result<(), CliError> {
         metadata,
         args.threads,
         args.print,
+        args.remove_input,
     )?;
 
 
@@ -93,6 +94,7 @@ fn handle_converting(
     metadata: Option<fb2epub::Metadata>,
     threads: usize,
     print_output: bool,
+    remove_input: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
     const SPINNER_TEMPLATE: &str = "{spinner:.green} {msg:.green}";
@@ -142,6 +144,7 @@ fn handle_converting(
                     styles.as_deref(),
                     metadata,
                     true,
+                    remove_input,
                 ) {
                     Ok(_) => if print_output {
                         bar.println(format!("Saved to {:#?}", file.1));
@@ -168,6 +171,7 @@ fn handle_converting(
             styles.as_deref(),
             metadata,
             true,
+            remove_input,
         )?;
         if print_output {
             sp.println(format!("Saved to {:#?}", file.1));
@@ -186,6 +190,7 @@ fn handle_converting(
     metadata: Option<fb2epub::Metadata>,
     threads: usize,
     print_output: bool,
+    remove_input: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
 
@@ -203,6 +208,7 @@ fn handle_converting(
                     styles.as_deref(),
                     metadata,
                     true,
+                    remove_input,
                 ) {
                     Ok(_) => if print_output {
                         println!("Saved to {:#?}", file.1);
@@ -222,6 +228,7 @@ fn handle_converting(
             styles.as_deref(),
             metadata,
             true,
+            remove_input,
         )?;
         if print_output {
             println!("Saved to {:#?}", file.1);
@@ -269,6 +276,7 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     styles_path: Option<&Path>,
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
+    remove_input: bool,
 ) -> Result<(), CliError> {
     if input.as_ref() == output.as_ref() {
         return Err(
@@ -290,11 +298,12 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
             styles_path,
             metadata,
             suspend_error_messages,
+            remove_input,
         ).map_err(CliError::ZipReader)
     };
 
 
-    let file = fs::File::open(input)
+    let file = fs::File::open(&input)
         .map_err(|err| CliError::Other(err.to_string()))?;
 
     let reader = std::io::BufReader::new(file);
@@ -315,6 +324,9 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     );
     if result.is_err() {
         fs::remove_file(output)
+            .map_err(|err| CliError::Other(err.to_string()))?;
+    } else if remove_input {
+        fs::remove_file(input)
             .map_err(|err| CliError::Other(err.to_string()))?;
     }
 
