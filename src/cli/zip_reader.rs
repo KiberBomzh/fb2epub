@@ -42,7 +42,6 @@ pub fn convert_archive(
     styles_path: Option<&Path>,
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
-    debug: bool
 ) -> Result<(), Error> {
     let temp_dir = TempDir::new()?;
     let temp_path = temp_dir.path();
@@ -63,7 +62,6 @@ pub fn convert_archive(
             styles_path,
             metadata,
             suspend_error_messages,
-            debug
         ).map_err(|err| Error::Cli(Box::new(err)));
     };
 
@@ -89,7 +87,6 @@ pub fn convert_archive(
             styles_path,
             metadata.clone(),
             suspend_error_messages,
-            debug
         );
 
         if let Err(err) = result {

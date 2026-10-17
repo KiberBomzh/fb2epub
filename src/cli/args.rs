@@ -35,9 +35,6 @@ pub struct Args {
     pub pipe: bool,
     pub print: bool,
 
-    #[cfg(debug_assertions)]
-    pub debug: bool,
-
     pub title: Option<String>,
     pub authors: Option<Vec<String>>,
     pub language: Option<String>,
@@ -58,9 +55,6 @@ impl Args {
         let mut recursive = false;
         let mut pipe = false;
         let mut print = false;
-
-        #[cfg(debug_assertions)]
-        let mut debug = false;
 
         let mut title = None;
         let mut authors_some = Vec::new();
@@ -96,10 +90,6 @@ impl Args {
                     pipe = true,
                 Long("print") if print == false =>
                     print = true,
-
-                #[cfg(debug_assertions)]
-                Long("debug") if debug == false =>
-                    debug = true,
 
                 Long("title") if title.is_none() => {
                     let v = parser.value()?.string()?;
@@ -150,9 +140,6 @@ impl Args {
         Ok(
             Self{inputs, output, styles, threads, recursive, pipe, print,
                 title, authors, language, series, series_index,
-
-                #[cfg(debug_assertions)]
-                debug
             }
         )
     }

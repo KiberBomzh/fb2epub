@@ -22,33 +22,6 @@ pub struct Metadata {
     pub description: Option<Vec<String>>
 }
 
-// Функция для вывода секций, удобно для дебага
-fn print_sections(sections: &Vec<crate::fb2_parser::Section>, without_p: bool) {
-    let mut s = String::new();
-    let mut is_first = true;
-    for section in sections {
-        if is_first {
-            is_first = false;
-        } else {
-            std::io::stdin().read_line(&mut s).unwrap();
-            match s.trim() {
-                "q" | "quit" => break,
-                _ => {}
-            };
-            s.clear();
-        }
-        std::process::Command::new("clear").status().unwrap();
-        if without_p {
-            dbg!(&section.level);
-            dbg!(&section.file_name);
-            dbg!(&section.id);
-            dbg!(&section.title);
-        } else {
-            dbg!(&section);
-        };
-    };
-}
-
 
 pub fn convert<R: BufRead, W: Write>(
     reader: R, 
@@ -56,13 +29,9 @@ pub fn convert<R: BufRead, W: Write>(
     styles_path: Option<&Path>,
     metadata: Option<Metadata>,
     suspend_error_messages: bool,
-    debug: bool
 ) -> Result<(), Error> {
     // Чтение входного FB2
     let mut data = fb2_parser::parse(reader).map_err(Error::Fb2Parser)?;
-    if debug {
-        print_sections(&data.content, false);
-    }
     
     
     if let Some(meta) = metadata {

@@ -80,9 +80,6 @@ pub fn handle_cli() -> Result<(), CliError> {
         metadata,
         args.threads,
         args.print,
-
-        #[cfg(debug_assertions)]
-        args.debug,
     )?;
 
 
@@ -96,16 +93,11 @@ fn handle_converting(
     metadata: Option<fb2epub::Metadata>,
     threads: usize,
     print_output: bool,
-
-    #[cfg(debug_assertions)]
-    debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
     const SPINNER_TEMPLATE: &str = "{spinner:.green} {msg:.green}";
     const BAR_TEMPLATE: &str = "{elapsed_precise} [{wide_bar}] {human_pos}/{human_len} {percent}% ";
 
-    #[cfg(not(debug_assertions))]
-    let debug = false;
 
     fn setup_spinner(file: &Path, sp: &ProgressBar) {
         let file_name = file.file_name()
@@ -150,7 +142,6 @@ fn handle_converting(
                     styles.as_deref(),
                     metadata,
                     true,
-                    debug
                 ) {
                     Ok(_) => if print_output {
                         bar.println(format!("Saved to {:#?}", file.1));
@@ -177,7 +168,6 @@ fn handle_converting(
             styles.as_deref(),
             metadata,
             true,
-            debug
         )?;
         if print_output {
             sp.println(format!("Saved to {:#?}", file.1));
@@ -196,14 +186,8 @@ fn handle_converting(
     metadata: Option<fb2epub::Metadata>,
     threads: usize,
     print_output: bool,
-
-    #[cfg(debug_assertions)]
-    debug: bool,
 ) -> Result<(), CliError> {
     const CONVERTING_ERROR_MSG: &str = "Error while converting";
-
-    #[cfg(not(debug_assertions))]
-    let debug = false;
 
     if files.len() > 1 {
         let pool = ThreadPool::new(threads);
@@ -219,7 +203,6 @@ fn handle_converting(
                     styles.as_deref(),
                     metadata,
                     true,
-                    debug
                 ) {
                     Ok(_) => if print_output {
                         println!("Saved to {:#?}", file.1);
@@ -239,7 +222,6 @@ fn handle_converting(
             styles.as_deref(),
             metadata,
             true,
-            debug
         )?;
         if print_output {
             println!("Saved to {:#?}", file.1);
@@ -278,7 +260,6 @@ fn handle_pipe(
         styles_path.as_deref(),
         metadata,
         false, // suspend_error_messages
-        false, // debug
     )
 }
 
@@ -288,7 +269,6 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     styles_path: Option<&Path>,
     metadata: Option<fb2epub::Metadata>,
     suspend_error_messages: bool,
-    debug: bool
 ) -> Result<(), CliError> {
     if input.as_ref() == output.as_ref() {
         return Err(
@@ -310,7 +290,6 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
             styles_path,
             metadata,
             suspend_error_messages,
-            debug
         ).map_err(CliError::ZipReader)
     };
 
@@ -333,7 +312,6 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
         styles_path,
         metadata,
         suspend_error_messages,
-        debug
     );
     if result.is_err() {
         fs::remove_file(output)
