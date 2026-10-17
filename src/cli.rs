@@ -290,6 +290,12 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
     suspend_error_messages: bool,
     debug: bool
 ) -> Result<(), CliError> {
+    if input.as_ref() == output.as_ref() {
+        return Err(
+            CliError::Other("Input and output are the same path!".into())
+        );
+    }
+
     #[cfg(feature = "zip")]
     if input
         .as_ref()
