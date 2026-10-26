@@ -72,7 +72,7 @@ pub fn binary_reader<R: BufRead>(
 
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode().map_err(|err| err.to_string())?
+                    .xml10_content().map_err(|err| err.to_string())?
                     .into_owned();
 
 

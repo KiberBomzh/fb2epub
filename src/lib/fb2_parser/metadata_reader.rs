@@ -139,7 +139,7 @@ pub fn metadata_reader<R: BufRead>(
             
             Ok(Event::Text(e)) => {
                 let text = e
-                    .decode()?
+                    .xml10_content()?
                     .into_owned();
                 
                 if in_title {
