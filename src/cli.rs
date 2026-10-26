@@ -199,7 +199,7 @@ fn handle_converting(
         let styles = Arc::new(styles);
 
         while let Some(file) = files.pop() {
-            let styles = Arc::clone(styles);
+            let styles = Arc::clone(&styles);
             let metadata = metadata.clone();
             pool.execute(move || {
                 match run(
