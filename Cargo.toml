@@ -23,14 +23,13 @@ base64 = "0.22.1"
 epub-builder = "0.8"
 quick-xml = { version = "0.38.4", features = ["encoding"]}
 tempfile = "3.24"
-zip = { version = "6", optional = true, default-features = false, features = [ "deflate" ] }
+zip = { version = "6", default-features = false, features = [ "deflate" ] }
 threadpool = { version = "1.8.1", optional = true }
 indicatif = { version = "0.18.3", optional = true }
 lexopt = "0.3.2"
 
 [features]
-default = ["zip", "spinners"]
+default = ["spinners"]
 pipe = []
 cli = [ "dep:threadpool", "pipe"]
 spinners = [ "dep:indicatif", "cli" ]
-zip = ["dep:zip", "cli"]

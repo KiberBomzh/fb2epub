@@ -1,4 +1,3 @@
-#[cfg(feature = "zip")]
 mod zip_reader;
 
 mod args;
@@ -17,14 +16,9 @@ use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 use error::CliError;
 
 
-#[cfg(feature = "zip")]
 const ALLOWED_EXTENSIONS: [&str; 2] = [
     "fb2",
     "zip"
-];
-#[cfg(not(feature = "zip"))]
-const ALLOWED_EXTENSIONS: [&str; 1] = [
-    "fb2",
 ];
 
 
@@ -284,7 +278,6 @@ fn run<I: AsRef<Path>, O: AsRef<Path>>(
         );
     }
 
-    #[cfg(feature = "zip")]
     if input
         .as_ref()
         .extension()

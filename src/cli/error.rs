@@ -10,10 +10,8 @@ pub enum CliError {
     GetInput(std::io::Error),
     SetOutput(std::io::Error),
     GetOutput(std::io::Error),
-    Other(String),
-
-    #[cfg(feature = "zip")]
     ZipReader(super::zip_reader::Error),
+    Other(String),
 }
 
 impl Error for CliError {
@@ -24,8 +22,6 @@ impl Error for CliError {
             Self::GetInput(e) => Some(e),
             Self::SetOutput(e) => Some(e),
             Self::GetOutput(e) => Some(e),
-
-            #[cfg(feature = "zip")]
             Self::ZipReader(e) => Some(e),
             _ => None,
         }
@@ -47,7 +43,6 @@ impl From<String> for CliError {
         Self::Other(err)
     }
 }
-#[cfg(feature = "zip")]
 impl From<super::zip_reader::Error> for CliError {
     fn from(err: super::zip_reader::Error) -> Self {
         Self::ZipReader(err)
@@ -63,10 +58,8 @@ impl fmt::Display for CliError {
             Self::GetInput(err) => format!("Error while getting inputs: {err}"),
             Self::SetOutput(err) => format!("Error while setting output: {err}"),
             Self::GetOutput(err) => format!("Error while getting output: {err}"),
-            Self::Other(err) => err.clone(),
-
-            #[cfg(feature = "zip")]
             Self::ZipReader(err) => err.to_string(),
+            Self::Other(err) => err.clone(),
         };
 
         write!(f, "{s}")
