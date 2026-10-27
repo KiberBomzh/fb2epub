@@ -126,7 +126,7 @@ pub fn metadata_reader<R: BufRead>(
 
 
                     b"p" if in_annotation => {
-                        annotation.push(annotation_current_p);
+                        annotation.push(annotation_current_p.trim().to_string());
                         annotation_current_p = String::new();
                     },
                     b"annotation" => {
