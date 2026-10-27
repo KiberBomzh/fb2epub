@@ -442,6 +442,41 @@ pub fn content_reader<R: BufRead>(
                     }
                 }
             }
+
+            Ok(Event::GeneralRef(e)) => {
+                let mut text = e
+                    .xml10_content().map_err(|err| err.to_string())?
+                    .into_owned();
+
+                text.insert(0, '&');
+                text.push(';');
+                
+                if in_date {
+                    date.push(TextBlock {
+                        text,
+                        strong,
+                        emphasis,
+                        strikethrough,
+                        code,
+                        sup,
+                        sub,
+                        link: link.clone()
+                    });
+                    link = None;
+                } else if in_p || in_v || in_text_author || in_subtitle || in_title {
+                    paragraph.push(TextBlock {
+                        text,
+                        strong,
+                        emphasis,
+                        strikethrough,
+                        code,
+                        sup,
+                        sub,
+                        link: link.clone()
+                    });
+                    link = None;
+                }
+            },
             
             Ok(Event::Empty(ref e)) => {
                 match e.name().as_ref() {

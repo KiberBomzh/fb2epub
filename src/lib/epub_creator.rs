@@ -80,11 +80,7 @@ pub fn create_epub<W: std::io::Write>(
         
         if let Some(annotation) = &metadata.annotation {
             let mut description = String::new();
-            for (i, p) in annotation.iter().enumerate() {
-                if i != 0 {
-                    description.push('\n')
-                };
-                
+            for p in annotation {
                 description.push_str(p);
             };
             builder.metadata("description", description)?;

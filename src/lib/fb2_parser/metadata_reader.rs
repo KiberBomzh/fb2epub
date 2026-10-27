@@ -52,6 +52,7 @@ pub fn metadata_reader<R: BufRead>(
     
     let mut in_annotation = false;
     let mut annotation: Vec<String> = Vec::new();
+    let mut annotation_current_p = String::new();
     
     let mut in_lang = false;
     let mut in_cover = false;
@@ -122,6 +123,12 @@ pub fn metadata_reader<R: BufRead>(
                     b"first-name" => in_first_name = false,
                     b"middle-name" => in_middle_name = false,
                     b"last-name" => in_last_name = false,
+
+
+                    b"p" if in_annotation => {
+                        annotation.push(annotation_current_p);
+                        annotation_current_p = String::new();
+                    },
                     b"annotation" => {
                         in_annotation = false;
                         
@@ -130,6 +137,7 @@ pub fn metadata_reader<R: BufRead>(
                             annotation.clear();
                         }
                     },
+
                     b"lang" => in_lang = false,
                     b"coverpage" => in_cover = false,
                     b"description" => break,
@@ -143,21 +151,42 @@ pub fn metadata_reader<R: BufRead>(
                     .into_owned();
                 
                 if in_title {
-                    meta.title = text;
+                    meta.title.push_str(&text);
                 } else if in_first_name {
-                    first_name = text;
+                    first_name.push_str(&text);
                 } else if in_middle_name {
-                    middle_name = text;
+                    middle_name.push_str(&text);
                 } else if in_last_name {
-                    last_name = text;
+                    last_name.push_str(&text);
                 } else if in_annotation {
-                    if !text.trim().is_empty() {
-                        annotation.push(text.trim().to_string());
-                    }
+                    annotation_current_p.push_str(&text);
                 } else if in_lang {
                     meta.language = text;
                 }
             }
+
+            Ok(Event::GeneralRef(e)) => {
+                let text = match e.xml10_content()?.as_ref() {
+                    "amp" => String::from("&"),
+                    "apos" => String::from("'"),
+                    "quot" => String::from("\""),
+                    "lt" => String::from("<"),
+                    "gt" => String::from(">"),
+                    _ => String::new(),
+                };
+
+                if in_title {
+                    meta.title.push_str(&text);
+                } else if in_first_name {
+                    first_name.push_str(&text);
+                } else if in_middle_name {
+                    middle_name.push_str(&text);
+                } else if in_last_name {
+                    last_name.push_str(&text);
+                } else if in_annotation && !text.is_empty() {
+                    annotation_current_p.push_str(&text);
+                }
+            },
             
             Ok(Event::Empty(ref e)) => {
                 match e.name().as_ref() {
