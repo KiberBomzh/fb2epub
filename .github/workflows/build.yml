@@ -1,73 +1,71 @@
 name: Build Release
 
 on:
-    workflow_dispatch:
-    push:
-        branches: [master]
+  workflow_dispatch:
+  push:
+    branches: [master]
 
 jobs:
-    build-linux:
-        name: Build for Linux
-        runs-on: ubuntu-22.04
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v7
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-            - name: Setup Rust
-              uses: dtolnay/rust-toolchain@stable
-
-
-            - name: Build pipe-only release
-              run: cargo build --release --no-default-features --features pipe
-
-            - name: Zip pipe-only release
-              run: zip -j fb2epub-pipe-only_linux_x86-64.zip target/release/fb2epub
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
 
-            - name: Build release
-              run: cargo build --release
+      - name: Build pipe-only release
+        run: cargo build --release --no-default-features --features pipe
 
-            - name: Zip release
-              run: zip -j fb2epub_linux_x86-64.zip target/release/fb2epub
+      - name: Zip pipe-only release
+        run: zip -j fb2epub-pipe-only_linux_x86-64.zip target/release/fb2epub
 
+      - name: Build release
+        run: cargo build --release
 
-            - name: Upload artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: linux-release.zip
-                  path: fb2epub*_linux_x86-64.zip
-                  if-no-files-found: error
-
-     build-windows:
-         name: Build for Windows
-         runs-on: windows-2022
-         steps:
-             - name: Checkout code
-               uses: actions/checkout@v7
- 
-             - name: Setup Rust
-               uses: dtolnay/rust-toolchain@stable
-               with:
-                   targets: x86_64-pc-windows-msvc
- 
-
-             - name: Build pipe-only release
-               run: cargo build --release --no-default-features --features pipe
-
-             - name: Copy pipe-only release
-               run: copy target/release/fb2epub fb2epub-pipe-only_windows_x86-64.exe 
+      - name: Zip release
+        run: zip -j fb2epub_linux_x86-64.zip target/release/fb2epub
 
 
-             - name: Build release
-               run: cargo build --release
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release.zip
+          path: fb2epub*_linux_x86-64.zip
+          if-no-files-found: error
 
-             - name: Copy release
-               run: copy target/release/fb2epub fb2epub_windows_x86-64.exe
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
 
- 
-             - name: Upload artifacts
-               uses: actions/upload-artifact@v4
-               with:
-                   name: windows-release.zip
-                   path: fb2epub*_windows_x86-64.exe
-                   if-no-files-found: error
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+
+      - name: Build pipe-only release
+        run: cargo build --release --no-default-features --features pipe
+
+      - name: Copy pipe-only release
+        run: copy target/release/fb2epub fb2epub-pipe-only_windows_x86-64.exe
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Copy release
+        run: copy target/release/fb2epub fb2epub_windows_x86-64.exe
+
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release.zip
+          path: fb2epub*_windows_x86-64.exe
+          if-no-files-found: error
