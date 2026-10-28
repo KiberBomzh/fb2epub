@@ -1,0 +1,63 @@
+name: Build Release
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [master]
+
+jobs:
+    build-linux:
+        name: Build for Linux
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@stable
+
+
+            - name: Build pipe-only release
+              run: cargo build --release --no-default-features --features pipe
+
+            - name: Zip pipe-only release
+              run: zip fb2epub-pipe-only_linux_x86-64.zip target/release/fb2epub
+
+
+            - name: Build release
+              run: cargo build --release
+
+            - name: Zip release
+              run: zip fb2epub_linux_x86-64.zip target/release/fb2epub
+
+
+            - name: Zip releases in one file
+              run: zip linux-release.zip fb2epub-pipe-only_linux_x86-64.zip fb2epub_linux_x86-64.zip
+
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: linux-release
+                  path: linux-release.zip
+                  if-no-files-found: error
+
+#     build-windows:
+#         name: Build for Windows
+#         runs-on: windows-2022
+#         steps:
+#             - name: Checkout code
+#               uses: actions/checkout@v7
+# 
+#             - name: Setup Rust
+#               uses: dtolnay/rust-toolchain@stable
+#               with:
+#                   targets: x86_64-pc-windows-msvc
+# 
+# 
+#             - name: Upload artifacts
+#               uses: actions/upload-artifact@v4
+#               with:
+#                   name: songbook-windows-x86_64.exe
+#                   path: build/windows/x64/Installer/Release/Songbook-x86_64-*-Installer.exe
+#                   if-no-files-found: error
