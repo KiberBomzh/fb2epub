@@ -38,22 +38,36 @@ jobs:
                   path: fb2epub*_linux_x86-64.zip
                   if-no-files-found: error
 
-#     build-windows:
-#         name: Build for Windows
-#         runs-on: windows-2022
-#         steps:
-#             - name: Checkout code
-#               uses: actions/checkout@v7
-# 
-#             - name: Setup Rust
-#               uses: dtolnay/rust-toolchain@stable
-#               with:
-#                   targets: x86_64-pc-windows-msvc
-# 
-# 
-#             - name: Upload artifacts
-#               uses: actions/upload-artifact@v4
-#               with:
-#                   name: songbook-windows-x86_64.exe
-#                   path: build/windows/x64/Installer/Release/Songbook-x86_64-*-Installer.exe
-#                   if-no-files-found: error
+     build-windows:
+         name: Build for Windows
+         runs-on: windows-2022
+         steps:
+             - name: Checkout code
+               uses: actions/checkout@v7
+ 
+             - name: Setup Rust
+               uses: dtolnay/rust-toolchain@stable
+               with:
+                   targets: x86_64-pc-windows-msvc
+ 
+
+             - name: Build pipe-only release
+               run: cargo build --release --no-default-features --features pipe
+
+             - name: Copy pipe-only release
+               run: copy target/release/fb2epub fb2epub-pipe-only_windows_x86-64.exe 
+
+
+             - name: Build release
+               run: cargo build --release
+
+             - name: Copy release
+               run: copy target/release/fb2epub fb2epub_windows_x86-64.exe
+
+ 
+             - name: Upload artifacts
+               uses: actions/upload-artifact@v4
+               with:
+                   name: windows-release.zip
+                   path: fb2epub*_windows_x86-64.exe
+                   if-no-files-found: error
