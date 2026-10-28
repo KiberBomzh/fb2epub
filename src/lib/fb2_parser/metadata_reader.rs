@@ -172,7 +172,12 @@ pub fn metadata_reader<R: BufRead>(
                     "quot" => String::from("\""),
                     "lt" => String::from("<"),
                     "gt" => String::from(">"),
-                    _ => String::new(),
+
+                    _ => if let Some(t) = e.resolve_char_ref()? {
+                        t.to_string()
+                    } else {
+                        String::new()
+                    },
                 };
 
                 if in_title {
