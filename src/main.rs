@@ -26,7 +26,6 @@ fn handle_pipe() {
         None, // styles
         None, // metadata
         false, // suspend_error_messages
-        false, // debug
     );
 
     if let Err(err) = result {
