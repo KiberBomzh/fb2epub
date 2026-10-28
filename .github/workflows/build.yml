@@ -21,25 +21,21 @@ jobs:
               run: cargo build --release --no-default-features --features pipe
 
             - name: Zip pipe-only release
-              run: zip fb2epub-pipe-only_linux_x86-64.zip target/release/fb2epub
+              run: zip -j fb2epub-pipe-only_linux_x86-64.zip target/release/fb2epub
 
 
             - name: Build release
               run: cargo build --release
 
             - name: Zip release
-              run: zip fb2epub_linux_x86-64.zip target/release/fb2epub
-
-
-            - name: Zip releases in one file
-              run: zip linux-release.zip fb2epub-pipe-only_linux_x86-64.zip fb2epub_linux_x86-64.zip
+              run: zip -j fb2epub_linux_x86-64.zip target/release/fb2epub
 
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: linux-release
-                  path: linux-release.zip
+                  name: linux-release.zip
+                  path: fb2epub*_linux_x86-64.zip
                   if-no-files-found: error
 
 #     build-windows:
