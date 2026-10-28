@@ -54,13 +54,13 @@ jobs:
         run: cargo build --release --no-default-features --features pipe
 
       - name: Copy pipe-only release
-        run: copy target/release/fb2epub fb2epub-pipe-only_windows_x86-64.exe
+        run: copy target/release/fb2epub.exe fb2epub-pipe-only_windows_x86-64.exe
 
       - name: Build release
         run: cargo build --release
 
       - name: Copy release
-        run: copy target/release/fb2epub fb2epub_windows_x86-64.exe
+        run: copy target/release/fb2epub.exe fb2epub_windows_x86-64.exe
 
 
       - name: Upload artifacts
