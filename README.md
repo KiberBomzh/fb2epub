@@ -13,7 +13,7 @@ Or download binary files [here](https://github.com/KiberBomzh/fb2epub/releases/l
 - `--styles` `path/to/file.css` - use custom css styles
 - `-j, --threads` - threads for converting (thread per a book). Default is number of your cpu cores
 - `-r`, `--recursive` - search books as well in subdirectories 
-- `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--output`, `--recursive` and `--print` arguments will be ignored.
+- `-p`, `--pipe` - read book (only fb2) from stdin, write in stdout. `--output`, `--threads`, `--recursive`, `--print` and `--remove-input` arguments will be ignored.
 - `--print` - print output paths
 - `--remove-input` - remove input book(s)
 ### Flags for metadata
